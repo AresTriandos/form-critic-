@@ -1,0 +1,21 @@
+{
+  "name": "form-critic-lambda",
+  "version": "1.0.0",
+  "description": "AWS Lambda handler for exercise form analysis",
+  "main": "index.ts",
+  "scripts": {
+    "build": "esbuild index.ts --bundle --platform=node --target=node18 --external:aws-sdk --outfile=dist/index.js",
+    "deploy": "npm run build && zip -r function.zip dist/ node_modules/ && aws lambda update-function-code --function-name form-critic-analyzer --zip-file fileb://function.zip"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
