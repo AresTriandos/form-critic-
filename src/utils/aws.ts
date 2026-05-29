@@ -9,7 +9,7 @@ interface AnalysisResult {
 }
 
 // Configuration - Update these with your actual AWS Lambda endpoint
-const LAMBDA_ENDPOINT = 'https://your-lambda-function-url.lambda-url.region.on.aws/';
+const LAMBDA_ENDPOINT = 'https://hevgy4dagmgawsrafitpkjahbq0ydunt.lambda-url.us-east-1.on.aws/';
 
 /**
  * Upload video to Lambda for analysis
