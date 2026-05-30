@@ -1,4 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 
 interface AnalysisResult {
   exercise: string;
@@ -12,24 +13,60 @@ interface AnalysisResult {
 const LAMBDA_ENDPOINT = 'https://hevgy4dagmgawsrafitpkjahbq0ydunt.lambda-url.us-east-1.on.aws/';
 
 /**
- * Upload video to Lambda for analysis with Gemini 2.0
- * Gemini natively supports video, no frame extraction needed
+ * Extract a single frame from the video at the midpoint
+ * Returns base64 encoded JPEG (much cheaper than full video)
+ */
+async function extractFrameFromVideo(videoUri: string): Promise<string> {
+  try {
+    console.log('[FRAME] Extracting thumbnail from video...');
+
+    // Get file info to estimate duration
+    const fileInfo = await FileSystem.getInfoAsync(videoUri);
+    console.log('[FRAME] Video size:', fileInfo.size, 'bytes');
+
+    // Extract thumbnail at 0.5 second mark (early in the video)
+    // This avoids the blank initial frame and gets good form data
+    const thumbnail = await VideoThumbnails.getThumbnail(videoUri, {
+      time: 500, // milliseconds
+      headers: {
+        'Content-Type': 'image/jpeg',
+      },
+    });
+
+    console.log('[FRAME] Thumbnail extracted:', thumbnail.uri);
+
+    // Read thumbnail as base64
+    const base64Frame = await FileSystem.readAsStringAsync(thumbnail.uri, {
+      encoding: 'base64',
+    });
+
+    console.log('[FRAME] Frame size:', base64Frame.length, 'bytes (', Math.round(base64Frame.length / 1024), 'KB)');
+
+    return base64Frame;
+  } catch (error: any) {
+    console.error('[FRAME] Error extracting frame:', error);
+    throw new Error(`Failed to extract frame: ${error?.message || error}`);
+  }
+}
+
+/**
+ * Upload video to Lambda for analysis
+ * Extracts a single frame and sends that instead of full video
+ * Much cheaper: ~500 tokens per frame vs ~2M tokens per video
  */
 export async function uploadVideoAndAnalyze(videoUri: string): Promise<AnalysisResult> {
   try {
     console.log('[AWS] Starting analysis for video:', videoUri);
 
-    // Read video as base64
-    console.log('[AWS] Reading video file...');
-    const base64Video = await FileSystem.readAsStringAsync(videoUri, {
-      encoding: 'base64',
-    });
+    // Extract a single frame from the video
+    console.log('[AWS] Extracting frame from video...');
+    const frameBase64 = await extractFrameFromVideo(videoUri);
 
-    console.log('[AWS] Video size:', base64Video.length, 'bytes');
+    console.log('[AWS] Frame ready for analysis');
 
-    // Prepare payload - Gemini 2.0 handles video natively
+    // Prepare payload - send frame, not full video
     const payload = {
-      video: base64Video, // Send full video to Gemini
+      frame: frameBase64, // Single JPEG frame
       timestamp: new Date().toISOString(),
     };
 
@@ -42,7 +79,7 @@ export async function uploadVideoAndAnalyze(videoUri: string): Promise<AnalysisR
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
-      timeout: 180000, // 3 minute timeout for video processing
+      timeout: 60000, // 60 seconds for analysis
     } as any);
 
     console.log('[AWS] Lambda response status:', response.status);
@@ -73,14 +110,13 @@ export async function uploadVideoAndAnalyze(videoUri: string): Promise<AnalysisR
     throw new Error(
       error instanceof Error
         ? error.message
-        : 'Failed to analyze video. Please check your connection and try again.'
+        : 'Failed to analyze form. Please check your connection and try again.'
     );
   }
 }
 
 /**
  * Test Lambda connectivity
- * Used for debugging configuration issues
  */
 export async function testLambdaConnection(): Promise<boolean> {
   try {
@@ -91,13 +127,13 @@ export async function testLambdaConnection(): Promise<boolean> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        video: null,
+        frame: null,
         timestamp: new Date().toISOString(),
       }),
     } as any);
 
     console.log('[AWS] Lambda test response:', response.status);
-    return response.status === 400; // 400 expected for null video (not a 500 error)
+    return response.status === 400; // 400 expected for null frame
   } catch (error) {
     console.error('[AWS] Lambda connection test failed:', error);
     return false;
