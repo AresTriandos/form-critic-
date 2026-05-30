@@ -1,11 +1,9 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { execSync } from 'child_process';
 import Anthropic from '@anthropic-ai/sdk';
 
-interface VideoPayload {
-  video: string; // base64 encoded
-  videoSize: number;
+interface AnalysisPayload {
+  frames?: string[]; // base64 encoded frames OR full video for backward compat
+  video?: string; // base64 encoded video (legacy)
+  videoSize?: number;
   timestamp: string;
 }
 
@@ -18,59 +16,33 @@ interface AnalysisResponse {
 }
 
 const client = new Anthropic();
-const FRAMES_TO_EXTRACT = 6; // Extract 6 frames from the video for analysis
-
-/**
- * Extract frames from a video file
- * Returns an array of frame data URIs
- */
-async function extractFrames(videoPath: string): Promise<string[]> {
-  const frameDir = '/tmp/frames';
-
-  // Create frame directory
-  if (!fs.existsSync(frameDir)) {
-    fs.mkdirSync(frameDir, { recursive: true });
-  }
-
-  try {
-    // Use ffmpeg to extract frames
-    // This command extracts evenly spaced frames throughout the video
-    const command = `ffmpeg -i "${videoPath}" -vf "fps=1/${Math.ceil(30 / FRAMES_TO_EXTRACT)}" -vframes ${FRAMES_TO_EXTRACT} "${frameDir}/frame_%03d.jpg" -y`;
-
-    execSync(command, { stdio: 'ignore' });
-
-    // Read frames and convert to base64
-    const frames: string[] = [];
-    for (let i = 1; i <= FRAMES_TO_EXTRACT; i++) {
-      const framePath = path.join(frameDir, `frame_${String(i).padStart(3, '0')}.jpg`);
-      if (fs.existsSync(framePath)) {
-        const imageBuffer = fs.readFileSync(framePath);
-        const base64 = imageBuffer.toString('base64');
-        frames.push(`data:image/jpeg;base64,${base64}`);
-      }
-    }
-
-    return frames;
-  } catch (error) {
-    console.error('Frame extraction error:', error);
-    throw new Error('Failed to extract frames from video');
-  }
-}
 
 /**
  * Analyze exercise form using Claude Vision API
+ * Accepts either frames (preferred) or video (legacy)
  */
 async function analyzeForm(frames: string[]): Promise<Partial<AnalysisResponse>> {
   try {
+    if (frames.length === 0) {
+      throw new Error('No frames provided for analysis');
+    }
+
     // Build the message with all frames
-    const imageContent = frames.map((frame) => ({
-      type: 'image' as const,
-      source: {
-        type: 'base64' as const,
-        media_type: 'image/jpeg' as const,
-        data: frame.replace('data:image/jpeg;base64,', ''),
-      },
-    }));
+    const imageContent = frames.map((frame) => {
+      // Remove data URL prefix if present
+      const base64Data = frame.includes('base64,')
+        ? frame.split('base64,')[1]
+        : frame;
+
+      return {
+        type: 'image' as const,
+        source: {
+          type: 'base64' as const,
+          media_type: 'image/jpeg' as const,
+          data: base64Data,
+        },
+      };
+    });
 
     // Add text prompt
     imageContent.push({
@@ -96,7 +68,7 @@ Only return the JSON, no other text.`,
     });
 
     const response = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       messages: [
         {
@@ -136,7 +108,9 @@ Only return the JSON, no other text.`,
     };
   } catch (error) {
     console.error('Analysis error:', error);
-    throw new Error('Failed to analyze exercise form');
+    throw new Error(
+      error instanceof Error ? error.message : 'Failed to analyze exercise form'
+    );
   }
 }
 
@@ -148,7 +122,7 @@ export async function handler(event: any): Promise<any> {
 
   try {
     // Parse request body
-    let payload: VideoPayload;
+    let payload: AnalysisPayload;
 
     if (typeof event.body === 'string') {
       payload = JSON.parse(event.body);
@@ -156,33 +130,27 @@ export async function handler(event: any): Promise<any> {
       payload = event.body || event;
     }
 
-    if (!payload.video) {
+    console.log('Received request');
+    console.log('Has frames:', !!payload.frames);
+    console.log('Has video:', !!payload.video);
+
+    // Use frames if provided, otherwise return error
+    const frames = payload.frames || [];
+    if (frames.length === 0) {
+      console.error('No frames provided in payload');
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: 'No video provided' }),
+        body: JSON.stringify({
+          error: 'No frames provided',
+          hint: 'Send extracted frames from the app',
+        }),
         headers: { 'Content-Type': 'application/json' },
       };
     }
 
-    // Save video to temp file
-    const videoPath = `/tmp/workout_${Date.now()}.mp4`;
-    const videoBuffer = Buffer.from(payload.video, 'base64');
-    fs.writeFileSync(videoPath, videoBuffer);
-
-    console.log(`Received video: ${payload.videoSize} bytes`);
-
-    // Extract frames from video
-    console.log('Extracting frames...');
-    const frames = await extractFrames(videoPath);
-
-    if (frames.length === 0) {
-      throw new Error('No frames extracted from video');
-    }
-
-    console.log(`Extracted ${frames.length} frames`);
+    console.log(`Processing ${frames.length} frames for analysis...`);
 
     // Analyze form
-    console.log('Analyzing form with Claude...');
     const analysis = await analyzeForm(frames);
 
     // Calculate processing time
@@ -196,16 +164,11 @@ export async function handler(event: any): Promise<any> {
       processingTime,
     };
 
-    // Clean up temp files
-    try {
-      fs.unlinkSync(videoPath);
-      const frameDir = '/tmp/frames';
-      if (fs.existsSync(frameDir)) {
-        fs.rmSync(frameDir, { recursive: true, force: true });
-      }
-    } catch (cleanupError) {
-      console.error('Cleanup error:', cleanupError);
-    }
+    console.log('Analysis complete:', {
+      exercise: response.exercise,
+      score: response.score,
+      processingTimeMs: processingTime,
+    });
 
     return {
       statusCode: 200,
@@ -218,7 +181,7 @@ export async function handler(event: any): Promise<any> {
     return {
       statusCode: 500,
       body: JSON.stringify({
-        error: 'Failed to process video',
+        error: 'Failed to process request',
         details: error instanceof Error ? error.message : 'Unknown error',
       }),
       headers: { 'Content-Type': 'application/json' },
