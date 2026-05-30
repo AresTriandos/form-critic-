@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView } from 'expo-video';
 import { Colors } from '@/constants/theme';
 
 interface WorkoutResult {
@@ -423,14 +423,10 @@ export default function HistoryScreen() {
         <SafeAreaView style={styles.modalOverlay}>
           <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
             {selectedWorkout?.videoUri && (
-              <Video
+              <VideoView
                 source={{ uri: selectedWorkout.videoUri }}
-                rate={playbackSpeed}
-                volume={1.0}
-                isMuted={false}
-                resizeMode={ResizeMode.CONTAIN}
-                useNativeControls
                 style={styles.videoPlayer}
+                nativeControls
               />
             )}
 
