@@ -21,7 +21,7 @@ export default function CameraScreen() {
   const isDark = colorScheme === 'dark';
   const colors = isDark ? Colors.dark : Colors.light;
 
-  // Request permission on mount
+  // Request permission on mount and wait for camera to initialize
   useEffect(() => {
     requestPermission().then((result) => {
       setPermissionRequested(true);
@@ -36,6 +36,13 @@ export default function CameraScreen() {
         );
       }
     });
+    
+    // Give camera 2 seconds to initialize
+    const timer = setTimeout(() => {
+      setCameraReady(true);
+    }, 2000);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // Timer for recording
@@ -310,48 +317,60 @@ export default function CameraScreen() {
   };
 
   const handleRecordButtonPress = async () => {
-    if (!cameraRef.current || !cameraReady) {
-      Alert.alert('Error', 'Camera is initializing. Please wait a moment.');
+    if (!cameraRef.current) {
+      Alert.alert('Error', 'Camera ref not available');
+      return;
+    }
+    
+    if (!cameraReady) {
+      Alert.alert('Error', 'Camera is still initializing. Please wait.');
       return;
     }
     
     try {
       if (!isRecordingRef.current) {
         // Start recording
+        console.log('Attempting to start recording...');
+        
+        // Check if recordAsync exists
+        if (!cameraRef.current || typeof (cameraRef.current as any).recordAsync !== 'function') {
+          Alert.alert('Error', 'Camera recordAsync method not available');
+          return;
+        }
+        
         isRecordingRef.current = true;
         setIsRecording(true);
         setRecordingTime(0);
         
-        // Start recording without await - it returns when stopRecording is called
-        const recordingPromise = (cameraRef.current as any).recordAsync();
-        recordingPromise
-          .then((video: any) => {
-            handleVideoRecorded(video);
-          })
-          .catch((error: any) => {
-            console.error('Recording promise error:', error);
-            isRecordingRef.current = false;
-            setIsRecording(false);
-            Alert.alert('Error', `Recording failed: ${error.message || 'Unknown error'}`);
-          });
+        // Start recording
+        try {
+          const video = await (cameraRef.current as any).recordAsync();
+          console.log('Recording completed, video:', video);
+          handleVideoRecorded(video);
+        } catch (recordError: any) {
+          console.error('RecordAsync error:', recordError);
+          isRecordingRef.current = false;
+          setIsRecording(false);
+          Alert.alert('Error', `Recording error: ${recordError?.message || recordError || 'Unknown'}`);
+        }
       } else {
         // Stop recording
+        console.log('Stopping recording...');
         isRecordingRef.current = false;
         setIsRecording(false);
         
-        if (cameraRef.current && typeof (cameraRef.current as any).stopRecording === 'function') {
-          try {
-            await (cameraRef.current as any).stopRecording();
-          } catch (stopError) {
-            console.error('Stop recording error:', stopError);
-          }
+        try {
+          await (cameraRef.current as any).stopRecording();
+          console.log('Stop recording success');
+        } catch (stopError) {
+          console.error('Stop recording error:', stopError);
         }
       }
     } catch (error) {
       console.error('Button press error:', error);
       isRecordingRef.current = false;
       setIsRecording(false);
-      Alert.alert('Error', `Failed to record video: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      Alert.alert('Error', `Failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
