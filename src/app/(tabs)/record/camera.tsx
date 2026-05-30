@@ -192,27 +192,44 @@ export default function CameraScreen() {
   const handleStartRecord = async () => {
     try {
       if (!cameraRef.current) {
+        console.error('Camera ref is null');
         Alert.alert('Error', 'Camera not initialized');
         return;
       }
 
-      console.log('Starting recording...');
+      console.log('[RECORD] Starting video recording...');
+      console.log('[RECORD] Camera ref:', cameraRef.current ? 'OK' : 'NULL');
+      
       recordingRef.current = true;
       setIsRecording(true);
       setRecordingTime(0);
 
+      console.log('[RECORD] Calling recordAsync()...');
       const video = await cameraRef.current.recordAsync();
       
-      if (video?.uri) {
-        console.log('Recording stopped, video:', video.uri);
-        recordingRef.current = false;
-        setIsRecording(false);
-        await saveVideoLocally(video.uri);
+      console.log('[RECORD] recordAsync completed');
+      console.log('[RECORD] Video object:', JSON.stringify(video));
+      console.log('[RECORD] Video URI:', video?.uri);
+      
+      if (!video) {
+        console.error('[RECORD] No video object returned from recordAsync');
+        throw new Error('recordAsync returned null');
       }
+
+      if (!video.uri) {
+        console.error('[RECORD] Video object has no URI property');
+        throw new Error('recordAsync returned video with no URI');
+      }
+
+      console.log('[RECORD] Recording stopped successfully, saving...');
+      recordingRef.current = false;
+      setIsRecording(false);
+      await saveVideoLocally(video.uri);
     } catch (error: any) {
-      console.error('Recording error:', error);
-      console.error('Error message:', error?.message);
-      console.error('Error code:', error?.code);
+      console.error('[RECORD] Recording error:', error);
+      console.error('[RECORD] Error message:', error?.message);
+      console.error('[RECORD] Error code:', error?.code);
+      console.error('[RECORD] Full error:', error);
       recordingRef.current = false;
       setIsRecording(false);
       Alert.alert('Recording Error', error?.message || 'Failed to record video');
@@ -222,15 +239,19 @@ export default function CameraScreen() {
   const handleStopRecord = async () => {
     try {
       if (!cameraRef.current) {
+        console.error('[STOP] Camera ref is null');
         return;
       }
 
-      console.log('Stopping recording...');
+      console.log('[STOP] Stopping recording...');
       recordingRef.current = false;
       setIsRecording(false);
+      
+      // stopRecording doesn't return anything, just stops the current recordAsync
       await cameraRef.current.stopRecording();
+      console.log('[STOP] Recording stopped');
     } catch (error: any) {
-      console.error('Stop error:', error);
+      console.error('[STOP] Error:', error);
       recordingRef.current = false;
       setIsRecording(false);
     }
@@ -238,11 +259,14 @@ export default function CameraScreen() {
 
   const saveVideoLocally = async (videoPath: string) => {
     try {
-      console.log('Saving video from:', videoPath);
+      console.log('[SAVE] Saving video from:', videoPath);
       
       const appDir = FileSystem.documentDirectory + 'FormCritic/';
+      console.log('[SAVE] Target directory:', appDir);
+      
       const dirInfo = await FileSystem.getInfoAsync(appDir);
       if (!dirInfo.exists) {
+        console.log('[SAVE] Creating directory...');
         await FileSystem.makeDirectoryAsync(appDir, { intermediates: true });
       }
 
@@ -250,12 +274,13 @@ export default function CameraScreen() {
       const filename = `workout_${timestamp}.mp4`;
       const newPath = appDir + filename;
 
+      console.log('[SAVE] Copying to:', newPath);
       await FileSystem.copyAsync({
         from: videoPath,
         to: newPath,
       });
 
-      console.log('Video saved to:', newPath);
+      console.log('[SAVE] Video saved successfully');
 
       router.push({
         pathname: '/record/processing',
@@ -265,8 +290,9 @@ export default function CameraScreen() {
         },
       });
     } catch (error: any) {
-      console.error('Save error:', error);
-      Alert.alert('Error', 'Failed to save video');
+      console.error('[SAVE] Error:', error);
+      console.error('[SAVE] Error message:', error?.message);
+      Alert.alert('Error', 'Failed to save video: ' + (error?.message || 'Unknown error'));
     }
   };
 
@@ -277,6 +303,7 @@ export default function CameraScreen() {
         style={styles.camera}
         facing="back"
         mode="video"
+        videoQuality="720p"
       >
         <View style={styles.overlay}>
           <View style={styles.controls}>
