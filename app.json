@@ -16,6 +16,7 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "supportsTabletOS": false,
+      "bundleIdentifier": "com.ares.formcritic",
       "infoPlist": {
         "NSCameraUsageDescription": "FormCritic needs camera access to record your exercises",
         "NSPhotoLibraryUsageDescription": "FormCritic needs photo library access to save videos",
@@ -23,6 +24,7 @@
       }
     },
     "android": {
+      "package": "com.ares.formcritic",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
