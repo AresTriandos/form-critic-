@@ -29,13 +29,12 @@ jobs:
         run: |
           echo "EXPO_PUBLIC_LAMBDA_ENDPOINT=${{ secrets.LAMBDA_ENDPOINT }}" > .env.local
 
-      - name: Authenticate with Expo
-        run: eas login --non-interactive
+      - name: Build on EAS
+        run: eas build --platform ios --profile production --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Build on EAS
-        run: eas build --platform ios --profile production --non-interactive
-
       - name: Submit to TestFlight
         run: eas submit --platform ios --latest --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
