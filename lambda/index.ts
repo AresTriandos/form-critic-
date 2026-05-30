@@ -1,8 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 interface AnalysisPayload {
-  frame?: string; // base64 encoded JPEG frame (preferred)
-  video?: string; // base64 encoded video (fallback)
+  video: string; // base64 encoded MP4
   timestamp: string;
 }
 
@@ -18,17 +17,17 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
 
 /**
  * Analyze exercise form using Google Gemini 2.0 Vision API
- * Accepts JPEG frames or MP4 videos for analysis
+ * Gemini natively supports video analysis
  */
-async function analyzeFrame(dataBase64: string, isVideo: boolean = false): Promise<Partial<AnalysisResponse>> {
+async function analyzeVideo(videoBase64: string): Promise<Partial<AnalysisResponse>> {
   try {
     console.log('Initializing Gemini model...');
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     // Create the prompt
-    const prompt = `You are an expert fitness coach analyzing exercise form from a video or photo.
+    const prompt = `You are an expert fitness coach analyzing exercise form from a video.
 
-Analyze the exercise shown and provide:
+Analyze the exercise shown in this video and provide:
 
 1. Exercise Name: Identify the specific exercise being performed
 2. Form Score: Rate the form quality from 0-100 (100 = perfect form)
@@ -45,14 +44,13 @@ IMPORTANT: You must return a valid JSON response with this exact structure:
 
 Only return the JSON, no other text.`;
 
-    // Send to Gemini with frame or video
-    const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
-    console.log('Sending', mimeType, 'to Gemini for analysis...');
+    // Send to Gemini with video
+    console.log('Sending video to Gemini for analysis...');
     const response = await model.generateContent([
       {
         inlineData: {
-          mimeType: mimeType,
-          data: dataBase64,
+          mimeType: 'video/mp4',
+          data: videoBase64,
         },
       },
       prompt,
@@ -110,30 +108,24 @@ export async function handler(event: any): Promise<any> {
     }
 
     console.log('Received request');
-    console.log('Has frame:', !!payload.frame);
     console.log('Has video:', !!payload.video);
 
-    // Use frame if provided, otherwise try video
-    const dataBase64 = payload.frame || payload.video;
-    const dataType = payload.frame ? 'frame' : 'video';
-
-    if (!dataBase64) {
-      console.error('No frame or video provided in payload');
+    if (!payload.video) {
+      console.error('No video provided in payload');
       return {
         statusCode: 400,
         body: JSON.stringify({
-          error: 'No data provided',
-          hint: 'Send either payload.frame (JPEG) or payload.video (MP4)',
+          error: 'No video provided',
+          hint: 'Send base64 encoded MP4 in payload.video',
         }),
         headers: { 'Content-Type': 'application/json' },
       };
     }
 
-    console.log('Data type:', dataType, 'size:', dataBase64.length, 'bytes');
+    console.log('Video size:', payload.video.length, 'bytes');
 
-    // Analyze form (frame or fallback to video)
-    const isVideo = dataType === 'video';
-    const analysis = await analyzeFrame(dataBase64, isVideo);
+    // Analyze video
+    const analysis = await analyzeVideo(payload.video);
 
     // Calculate processing time
     const processingTime = Date.now() - startTime;
@@ -149,7 +141,6 @@ export async function handler(event: any): Promise<any> {
     console.log('Analysis complete:', {
       exercise: response.exercise,
       score: response.score,
-      dataType: dataType,
       processingTimeMs: processingTime,
     });
 
