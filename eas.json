@@ -4,10 +4,6 @@
     "appVersionSource": "remote"
   },
   "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal"
-    },
     "preview": {
       "distribution": "internal"
     },
@@ -16,12 +12,7 @@
     }
   },
   "submit": {
-    "preview": {
-      "ios": {
-        "appleId": "annapolischiro@hotmail.com",
-        "appleTeamId": "L82V95LG93"
-      }
-    },
+
     "production": {
       "ios": {
         "appleId": "annapolischiro@hotmail.com",
