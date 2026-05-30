@@ -233,13 +233,17 @@ export default function CameraScreen() {
       try {
         setIsRecording(true);
         setRecordingTime(0);
-        const video = await (cameraRef.current as any).recordAsync({
+        (cameraRef.current as any).recordAsync({
           quality: '720p',
-          maxDuration: 120, // 2 minutes max
+          maxDuration: 120,
+        }).then((video: any) => {
+          handleVideoRecorded(video);
+        }).catch((error: any) => {
+          console.error('Recording error:', error);
+          setIsRecording(false);
         });
-        handleVideoRecorded(video);
       } catch (error) {
-        console.error('Recording error:', error);
+        console.error('Recording start error:', error);
         setIsRecording(false);
       }
     }
@@ -248,9 +252,12 @@ export default function CameraScreen() {
   const handleStopRecord = async () => {
     if (cameraRef.current && isRecording) {
       try {
-        await (cameraRef.current as any).stopRecording();
+        setIsRecording(false);
+        const video = await (cameraRef.current as any).stopRecording();
+        if (video) handleVideoRecorded(video);
       } catch (error) {
         console.error('Stop recording error:', error);
+        setIsRecording(false);
       }
     }
   };

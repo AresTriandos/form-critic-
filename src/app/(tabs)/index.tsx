@@ -1,4 +1,5 @@
 import { View, Text, TouchableOpacity, useColorScheme } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,6 +11,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#000' : '#fff' }}>
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
+        <Ionicons name="barbell" size={56} color="#0a7ea4" style={{ marginBottom: 16 }} />
         <Text style={{ fontSize: 32, fontWeight: '700', color: isDark ? '#fff' : '#000', marginBottom: 16, textAlign: 'center' }}>
           FormCritic
         </Text>
