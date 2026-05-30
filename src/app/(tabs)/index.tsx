@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TouchableOpacity, useColorScheme, ScrollView, Dimensions, Image } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, useColorScheme, ScrollView, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,21 +29,7 @@ export default function HomeScreen() {
       alignItems: 'center',
       marginBottom: 40,
     },
-    logoContainer: {
-      width: 100,
-      height: 100,
-      marginBottom: 24,
-      shadowColor: '#0a7ea4',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.2,
-      shadowRadius: 12,
-      elevation: 6,
-    },
-    logo: {
-      width: '100%',
-      height: '100%',
-      resizeMode: 'contain',
-    },
+
     title: {
       fontSize: 36,
       fontWeight: '800',
@@ -160,14 +146,8 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
       >
         <View style={styles.scrollContent}>
-          {/* Hero Section with Logo */}
+          {/* Hero Section */}
           <View style={styles.heroSection}>
-            <View style={styles.logoContainer}>
-              <Image
-                source={require('@/assets/images/formcritic-logo.png')}
-                style={styles.logo}
-              />
-            </View>
             <Text style={styles.title}>FormCritic</Text>
             <Text style={styles.subtitle}>
               AI-powered form analysis for perfect workouts
