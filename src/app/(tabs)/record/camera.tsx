@@ -1,6 +1,6 @@
 import { StyleSheet, View, TouchableOpacity, Text, useColorScheme } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { Ionicons } from '@expo/vector-symbols';
+import { Ionicons } from '@expo/vector-icons';
 import { useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';

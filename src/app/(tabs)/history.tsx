@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-symbols';
+import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';

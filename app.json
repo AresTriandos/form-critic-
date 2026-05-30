@@ -8,14 +8,9 @@
     "scheme": "formcriticapp",
     "userInterfaceStyle": "automatic",
     "description": "AI-powered exercise form analysis using Claude Vision API",
-    "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
+
     "ios": {
       "icon": "./assets/expo.icon",
-      "supportsTabletOS": false,
       "bundleIdentifier": "com.ares.formcritic",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
