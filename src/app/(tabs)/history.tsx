@@ -15,8 +15,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import { VideoView } from 'expo-video';
-import { Colors } from '@/constants/theme';
 
 interface WorkoutResult {
   id: string;
@@ -32,27 +30,25 @@ interface WorkoutResult {
 export default function HistoryScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
   const [results, setResults] = useState<WorkoutResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutResult | null>(null);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1);
 
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: isDark ? '#000' : '#fff',
     },
     header: {
       paddingHorizontal: 20,
       paddingVertical: 16,
-      borderBottomColor: colors.backgroundElement,
+      borderBottomColor: isDark ? '#333' : '#e5e5e5',
       borderBottomWidth: 1,
     },
     headerTitle: {
       fontSize: 24,
       fontWeight: '700',
-      color: colors.text,
+      color: isDark ? '#fff' : '#000',
     },
     emptyContainer: {
       flex: 1,
@@ -60,49 +56,31 @@ export default function HistoryScreen() {
       alignItems: 'center',
       paddingHorizontal: 20,
     },
-    emptyIcon: {
-      marginBottom: 16,
-    },
     emptyText: {
       fontSize: 16,
-      color: colors.textSecondary,
+      color: isDark ? '#aaa' : '#888',
       textAlign: 'center',
-      lineHeight: 24,
-    },
-    listContainer: {
-      flex: 1,
     },
     resultCard: {
       marginHorizontal: 20,
       marginVertical: 8,
       paddingHorizontal: 16,
       paddingVertical: 14,
-      backgroundColor: colors.backgroundElement,
+      backgroundColor: isDark ? '#1a1a1a' : '#f9f9f9',
       borderRadius: 12,
-      borderColor: colors.backgroundSelected,
-      borderWidth: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      shadowColor: colors.text,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 1,
-    },
-    resultInfo: {
-      flex: 1,
     },
     exerciseName: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.text,
+      color: isDark ? '#fff' : '#000',
       marginBottom: 4,
     },
     resultMeta: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      lineHeight: 18,
+      fontSize: 12,
+      color: isDark ? '#aaa' : '#888',
     },
     scoreBox: {
       minWidth: 50,
@@ -125,7 +103,7 @@ export default function HistoryScreen() {
     sectionHeaderText: {
       fontSize: 14,
       fontWeight: '700',
-      color: colors.textSecondary,
+      color: isDark ? '#aaa' : '#888',
       textTransform: 'uppercase',
     },
     loader: {
@@ -138,43 +116,6 @@ export default function HistoryScreen() {
       backgroundColor: 'rgba(0, 0, 0, 0.95)',
       justifyContent: 'flex-end',
     },
-    videoPlayer: {
-      width: '100%',
-      height: 280,
-      backgroundColor: '#000',
-    },
-    playerControls: {
-      backgroundColor: colors.background,
-      paddingHorizontal: 16,
-      paddingVertical: 16,
-      borderTopColor: colors.backgroundElement,
-      borderTopWidth: 1,
-    },
-    speedControls: {
-      flexDirection: 'row',
-      marginBottom: 16,
-      gap: 8,
-    },
-    speedButton: {
-      flex: 1,
-      paddingVertical: 10,
-      backgroundColor: colors.backgroundElement,
-      borderRadius: 8,
-      alignItems: 'center',
-      borderWidth: 2,
-      borderColor: 'transparent',
-    },
-    speedButtonActive: {
-      borderColor: '#0a7ea4',
-    },
-    speedButtonText: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.textSecondary,
-    },
-    speedButtonTextActive: {
-      color: '#0a7ea4',
-    },
     analysisSection: {
       paddingHorizontal: 16,
       paddingVertical: 12,
@@ -183,33 +124,31 @@ export default function HistoryScreen() {
     analysisSectionTitle: {
       fontSize: 14,
       fontWeight: '700',
-      color: colors.text,
+      color: isDark ? '#fff' : '#000',
       marginBottom: 8,
     },
     critiqueText: {
       fontSize: 14,
-      color: colors.text,
+      color: isDark ? '#fff' : '#000',
       lineHeight: 22,
       marginBottom: 12,
     },
-    keysCuesList: {
-      gap: 8,
-    },
     cueBadge: {
-      backgroundColor: colors.backgroundElement,
+      backgroundColor: isDark ? '#1a1a1a' : '#f9f9f9',
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 8,
       borderLeftWidth: 3,
       borderLeftColor: '#0a7ea4',
+      marginBottom: 8,
     },
     cueText: {
       fontSize: 13,
-      color: colors.text,
+      color: isDark ? '#fff' : '#000',
       fontWeight: '500',
     },
     closeButton: {
-      backgroundColor: colors.backgroundElement,
+      backgroundColor: isDark ? '#1a1a1a' : '#f9f9f9',
       paddingVertical: 12,
       paddingHorizontal: 16,
       borderRadius: 8,
@@ -219,12 +158,15 @@ export default function HistoryScreen() {
     closeButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
-    },
-    deleteButton: {
-      padding: 8,
+      color: isDark ? '#fff' : '#000',
     },
   });
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return { box: 'rgba(76, 175, 80, 0.15)', text: '#4CAF50' };
+    if (score >= 60) return { box: 'rgba(255, 152, 0, 0.15)', text: '#FF9800' };
+    return { box: 'rgba(244, 67, 54, 0.15)', text: '#f44336' };
+  };
 
   const loadHistory = async () => {
     try {
@@ -232,7 +174,6 @@ export default function HistoryScreen() {
       const history = await SecureStore.getItemAsync('workout_history');
       if (history) {
         const parsed = JSON.parse(history);
-        // Sort by savedAt descending (newest first)
         const sorted = parsed.sort(
           (a: WorkoutResult, b: WorkoutResult) =>
             new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
@@ -286,78 +227,17 @@ export default function HistoryScreen() {
     [] as Array<{ title: string; data: WorkoutResult[] }>
   );
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>History</Text>
-        </View>
-        <View style={styles.loader}>
-          <ActivityIndicator size="large" color="#0a7ea4" />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (results.length === 0) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>History</Text>
-        </View>
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIcon}>
-            <Ionicons name="history" size={48} color={isDark ? '#555' : '#ccc'} />
-          </View>
-          <Text style={styles.emptyText}>
-            No workouts recorded yet. Start by recording an exercise!
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return { box: 'rgba(76, 175, 80, 0.15)', text: '#4CAF50' };
-    if (score >= 60) return { box: 'rgba(255, 152, 0, 0.15)', text: '#FF9800' };
-    return { box: 'rgba(244, 67, 54, 0.15)', text: '#f44336' };
-  };
-
-  const handleDeleteWorkout = (id: string) => {
-    Alert.alert('Delete Workout', 'Are you sure? This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const updated = results.filter((r) => r.id !== id);
-            setResults(updated);
-            await SecureStore.setItemAsync('workout_history', JSON.stringify(updated));
-          } catch (err) {
-            console.error('Delete error:', err);
-          }
-        },
-      },
-    ]);
-  };
-
   const renderItem = ({ item }: { item: WorkoutResult }) => (
     <TouchableOpacity
       style={styles.resultCard}
       onPress={() => setSelectedWorkout(item)}
       activeOpacity={0.7}
     >
-      <View style={styles.resultInfo}>
+      <View style={{ flex: 1 }}>
         <Text style={styles.exerciseName}>{item.exercise}</Text>
         <Text style={styles.resultMeta}>
           Score: {item.score}/100 • {new Date(item.timestamp).toLocaleTimeString()}
         </Text>
-        {item.videoUri && (
-          <Text style={[styles.resultMeta, { marginTop: 4, color: '#0a7ea4' }]}>
-            📹 Video saved
-          </Text>
-        )}
       </View>
       <View
         style={[
@@ -369,13 +249,6 @@ export default function HistoryScreen() {
           {item.score}
         </Text>
       </View>
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => handleDeleteWorkout(item.id)}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="trash-outline" size={20} color={colors.textSecondary} />
-      </TouchableOpacity>
     </TouchableOpacity>
   );
 
@@ -390,18 +263,15 @@ export default function HistoryScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>History</Text>
       </View>
+
       {loading ? (
         <View style={styles.loader}>
           <ActivityIndicator size="large" color="#0a7ea4" />
         </View>
       ) : results.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <View style={styles.emptyIcon}>
-            <Ionicons name="history" size={48} color={colors.backgroundElement} />
-          </View>
           <Text style={styles.emptyText}>
-            No workouts recorded yet.{' '}
-            <Text style={{ fontWeight: '700' }}>Start by recording an exercise!</Text>
+            No workouts yet. Start by recording an exercise!
           </Text>
         </View>
       ) : (
@@ -410,11 +280,11 @@ export default function HistoryScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           renderSectionHeader={renderSectionHeader}
-          contentContainerStyle={styles.listContainer}
+          contentContainerStyle={{ paddingVertical: 8 }}
         />
       )}
 
-      {/* Video Playback Modal */}
+      {/* Analysis Modal */}
       <Modal
         visible={selectedWorkout !== null}
         animationType="slide"
@@ -422,39 +292,13 @@ export default function HistoryScreen() {
       >
         <SafeAreaView style={styles.modalOverlay}>
           <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-            {selectedWorkout?.videoUri && (
-              <VideoView
-                source={{ uri: selectedWorkout.videoUri }}
-                style={styles.videoPlayer}
-                nativeControls
-              />
-            )}
-
-            <View style={styles.playerControls}>
-              <Text style={styles.analysisSectionTitle}>Playback Speed</Text>
-              <View style={styles.speedControls}>
-                {[0.5, 0.75, 1, 1.25, 1.5].map((speed) => (
-                  <TouchableOpacity
-                    key={speed}
-                    style={[
-                      styles.speedButton,
-                      playbackSpeed === speed && styles.speedButtonActive,
-                    ]}
-                    onPress={() => setPlaybackSpeed(speed)}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.speedButtonText,
-                        playbackSpeed === speed &&
-                          styles.speedButtonTextActive,
-                      ]}
-                    >
-                      {speed}x
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+            <View style={styles.analysisSection}>
+              <Text style={styles.analysisSectionTitle}>
+                {selectedWorkout?.exercise}
+              </Text>
+              <Text style={{ fontSize: 28, fontWeight: '700', color: getScoreColor(selectedWorkout?.score || 0).text, marginBottom: 16 }}>
+                Score: {selectedWorkout?.score}/100
+              </Text>
             </View>
 
             {selectedWorkout && (
@@ -467,13 +311,11 @@ export default function HistoryScreen() {
                 {selectedWorkout.keyCues && selectedWorkout.keyCues.length > 0 && (
                   <View style={styles.analysisSection}>
                     <Text style={styles.analysisSectionTitle}>Key Improvement Cues</Text>
-                    <View style={styles.keysCuesList}>
-                      {selectedWorkout.keyCues.map((cue, idx) => (
-                        <View key={idx} style={styles.cueBadge}>
-                          <Text style={styles.cueText}>{cue}</Text>
-                        </View>
-                      ))}
-                    </View>
+                    {selectedWorkout.keyCues.map((cue, idx) => (
+                      <View key={idx} style={styles.cueBadge}>
+                        <Text style={styles.cueText}>{cue}</Text>
+                      </View>
+                    ))}
                   </View>
                 )}
               </>
