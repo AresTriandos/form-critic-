@@ -14,6 +14,7 @@ export default function CameraScreen() {
   const [permissionRequested, setPermissionRequested] = useState(false);
   const cameraRef = useRef(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isRecordingRef = useRef(false);
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
@@ -229,44 +230,40 @@ export default function CameraScreen() {
   }
 
   const handleStartRecord = async () => {
-    if (cameraRef.current && !isRecording) {
+    if (cameraRef.current && !isRecordingRef.current) {
       try {
+        isRecordingRef.current = true;
         setIsRecording(true);
         setRecordingTime(0);
-        (cameraRef.current as any).recordAsync({
-          quality: '720p',
-          maxDuration: 120,
-        }).then((video: any) => {
-          handleVideoRecorded(video);
-        }).catch((error: any) => {
-          console.error('Recording error:', error);
-          setIsRecording(false);
-        });
+        const video = await (cameraRef.current as any).recordAsync();
+        handleVideoRecorded(video);
       } catch (error) {
-        console.error('Recording start error:', error);
+        console.error('Recording error:', error);
+        isRecordingRef.current = false;
         setIsRecording(false);
       }
     }
   };
 
   const handleStopRecord = async () => {
-    if (cameraRef.current && isRecording) {
+    if (cameraRef.current && isRecordingRef.current) {
       try {
+        isRecordingRef.current = false;
         setIsRecording(false);
-        const video = await (cameraRef.current as any).stopRecording();
-        if (video) handleVideoRecorded(video);
+        await (cameraRef.current as any).stopRecording();
       } catch (error) {
         console.error('Stop recording error:', error);
-        setIsRecording(false);
       }
     }
   };
 
   const handleVideoRecorded = (video: any) => {
+    isRecordingRef.current = false;
     setIsRecording(false);
     if (video && video.uri) {
-      // Save video to phone storage
       saveVideoLocally(video.uri);
+    } else {
+      Alert.alert('Error', 'No video recorded. Please try again.');
     }
   };
 
