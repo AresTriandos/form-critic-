@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, useColorScheme, Image } from 'react-native';
+import { View, Text, TouchableOpacity, useColorScheme } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,10 +11,9 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#000' : '#fff' }}>
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
-        <Image
-          source={require('@/assets/images/formcritic-logo.png')}
-          style={{ width: 80, height: 80, marginBottom: 24 }}
-        />
+        <View style={{ width: 100, height: 100, backgroundColor: '#0a7ea4', borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 24 }}>
+          <Ionicons name="eye" size={50} color="#fff" />
+        </View>
         <Text style={{ fontSize: 32, fontWeight: '700', color: isDark ? '#fff' : '#000', marginBottom: 16, textAlign: 'center' }}>
           FormCritic
         </Text>

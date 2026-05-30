@@ -301,10 +301,43 @@ export default function CameraScreen() {
   };
 
   const toggleRecording = () => {
-    if (isRecording) {
+    if (isRecordingRef.current) {
       handleStopRecord();
     } else {
       handleStartRecord();
+    }
+  };
+
+  const handleRecordButtonPress = async () => {
+    console.log('Record button pressed, isRecording:', isRecordingRef.current);
+    if (!cameraRef.current) {
+      Alert.alert('Error', 'Camera not ready');
+      return;
+    }
+    
+    try {
+      if (!isRecordingRef.current) {
+        // Start recording
+        console.log('Starting recording...');
+        isRecordingRef.current = true;
+        setIsRecording(true);
+        setRecordingTime(0);
+        const video = await (cameraRef.current as any).recordAsync();
+        console.log('Recording stopped, video:', video);
+        handleVideoRecorded(video);
+      } else {
+        // Stop recording
+        console.log('Stopping recording...');
+        isRecordingRef.current = false;
+        setIsRecording(false);
+        await (cameraRef.current as any).stopRecording();
+        console.log('Recording stopped');
+      }
+    } catch (error) {
+      console.error('Button press error:', error);
+      isRecordingRef.current = false;
+      setIsRecording(false);
+      Alert.alert('Error', 'Failed to record video');
     }
   };
 
@@ -324,7 +357,7 @@ export default function CameraScreen() {
 
             <TouchableOpacity
               style={styles.recordButton}
-              onPress={toggleRecording}
+              onPress={handleRecordButtonPress}
               activeOpacity={0.8}
             >
               {isRecording ? (
