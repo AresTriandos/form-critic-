@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import * as VideoThumbnails from 'expo-video-thumbnails';
+import { getThumbnail } from 'expo-video-thumbnails';
 
 interface AnalysisResult {
   exercise: string;
@@ -26,12 +26,7 @@ async function extractFrameFromVideo(videoUri: string): Promise<string> {
 
     // Extract thumbnail at 0.5 second mark (early in the video)
     // This avoids the blank initial frame and gets good form data
-    const thumbnail = await VideoThumbnails.getThumbnail(videoUri, {
-      time: 500, // milliseconds
-      headers: {
-        'Content-Type': 'image/jpeg',
-      },
-    });
+    const thumbnail = await getThumbnail(videoUri, 500); // time in milliseconds
 
     console.log('[FRAME] Thumbnail extracted:', thumbnail.uri);
 
