@@ -18,6 +18,7 @@
       "supportsTabletOS": false,
       "bundleIdentifier": "com.ares.formcritic",
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "FormCritic needs camera access to record your exercises",
         "NSPhotoLibraryUsageDescription": "FormCritic needs photo library access to save videos",
         "NSMicrophoneUsageDescription": "FormCritic needs microphone access to record audio during exercises"
