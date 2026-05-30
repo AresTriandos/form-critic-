@@ -2,7 +2,7 @@ import { StyleSheet, View, Text, TouchableOpacity, useColorScheme, ScrollView, D
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors } from '@/src/constants/theme';
+import { Colors } from '@/constants/theme';
 
 const { width } = Dimensions.get('window');
 

@@ -189,7 +189,7 @@ export default function ResultsScreen() {
         ...analysis,
         videoUri: videoUri || analysis.videoUri, // Include video path
         savedAt: new Date().toISOString(),
-      });}
+      });
 
       // Save back to SecureStore
       await SecureStore.setItemAsync('workout_history', JSON.stringify(history));

@@ -5,7 +5,7 @@ import { useRef, useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system';
-import { Colors } from '@/src/constants/theme';
+import { Colors } from '@/constants/theme';
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -13,7 +13,7 @@ export default function CameraScreen() {
   const [recordingTime, setRecordingTime] = useState(0);
   const [permissionRequested, setPermissionRequested] = useState(false);
   const cameraRef = useRef(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';

@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { Video, ResizeMode } from 'expo-av';
-import { Colors } from '@/src/constants/theme';
+import { Colors } from '@/constants/theme';
 
 interface WorkoutResult {
   id: string;
