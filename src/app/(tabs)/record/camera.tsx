@@ -12,6 +12,7 @@ export default function CameraScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [permissionRequested, setPermissionRequested] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const cameraRef = useRef(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isRecordingRef = useRef(false);
@@ -309,8 +310,8 @@ export default function CameraScreen() {
   };
 
   const handleRecordButtonPress = async () => {
-    if (!cameraRef.current) {
-      Alert.alert('Error', 'Camera not ready');
+    if (!cameraRef.current || !cameraReady) {
+      Alert.alert('Error', 'Camera is initializing. Please wait a moment.');
       return;
     }
     
@@ -356,7 +357,15 @@ export default function CameraScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      <CameraView ref={cameraRef} style={styles.camera} facing="back">
+      <CameraView 
+        ref={cameraRef} 
+        style={styles.camera} 
+        facing="back"
+        onCameraReady={() => {
+          console.log('Camera is ready!');
+          setCameraReady(true);
+        }}
+      >
         <View style={styles.overlay}>
           <View style={styles.controls}>
             <TouchableOpacity
