@@ -14,58 +14,77 @@ const LAMBDA_ENDPOINT = 'https://hevgy4dagmgawsrafitpkjahbq0ydunt.lambda-url.us-
 
 /**
  * Extract a single frame from the video at the midpoint
- * Returns base64 encoded JPEG (much cheaper than full video)
+ * Returns base64 encoded data + type indicator
+ * Falls back to full video if thumbnail extraction not available
  */
-async function extractFrameFromVideo(videoUri: string): Promise<string> {
+async function extractFrameFromVideo(
+  videoUri: string
+): Promise<{ data: string; type: 'frame' | 'video' }> {
   try {
-    console.log('[FRAME] Extracting thumbnail from video...');
+    console.log('[FRAME] Attempting to extract thumbnail from video...');
 
-    // Get file info to estimate duration
+    // Get file info
     const fileInfo = await FileSystem.getInfoAsync(videoUri);
     console.log('[FRAME] Video size:', fileInfo.size, 'bytes');
 
-    // Extract thumbnail at 0.5 second mark (early in the video)
-    // This avoids the blank initial frame and gets good form data
-    const thumbnail = await getThumbnail(videoUri, 500); // time in milliseconds
+    try {
+      // Try to extract thumbnail at 0.5 second mark
+      console.log('[FRAME] Using getThumbnail...');
+      const thumbnail = await getThumbnail(videoUri, 500);
+      console.log('[FRAME] Thumbnail extracted:', thumbnail.uri);
 
-    console.log('[FRAME] Thumbnail extracted:', thumbnail.uri);
+      // Read thumbnail as base64
+      const base64Frame = await FileSystem.readAsStringAsync(thumbnail.uri, {
+        encoding: 'base64',
+      });
 
-    // Read thumbnail as base64
-    const base64Frame = await FileSystem.readAsStringAsync(thumbnail.uri, {
-      encoding: 'base64',
-    });
+      console.log('[FRAME] Frame size:', base64Frame.length, 'bytes');
+      return { data: base64Frame, type: 'frame' };
+    } catch (thumbnailError) {
+      console.warn('[FRAME] Thumbnail extraction failed, falling back to full video:', thumbnailError);
 
-    console.log('[FRAME] Frame size:', base64Frame.length, 'bytes (', Math.round(base64Frame.length / 1024), 'KB)');
-
-    return base64Frame;
+      // Fallback: Send full video if thumbnail extraction not available
+      console.log('[FRAME] Sending full video as fallback...');
+      const base64Video = await FileSystem.readAsStringAsync(videoUri, {
+        encoding: 'base64',
+      });
+      console.log('[FRAME] Fallback video size:', base64Video.length, 'bytes');
+      return { data: base64Video, type: 'video' };
+    }
   } catch (error: any) {
-    console.error('[FRAME] Error extracting frame:', error);
+    console.error('[FRAME] Critical error:', error);
     throw new Error(`Failed to extract frame: ${error?.message || error}`);
   }
 }
 
 /**
  * Upload video to Lambda for analysis
- * Extracts a single frame and sends that instead of full video
- * Much cheaper: ~500 tokens per frame vs ~2M tokens per video
+ * Extracts a single frame when possible, falls back to full video
+ * Frame: ~500 tokens (~$0.0001)
+ * Video: ~2M tokens (~$0.40)
  */
 export async function uploadVideoAndAnalyze(videoUri: string): Promise<AnalysisResult> {
   try {
     console.log('[AWS] Starting analysis for video:', videoUri);
 
-    // Extract a single frame from the video
-    console.log('[AWS] Extracting frame from video...');
-    const frameBase64 = await extractFrameFromVideo(videoUri);
+    // Extract frame (or fallback to video)
+    console.log('[AWS] Extracting data from video...');
+    const { data: base64Data, type } = await extractFrameFromVideo(videoUri);
 
-    console.log('[AWS] Frame ready for analysis');
+    console.log('[AWS] Data type:', type, 'size:', base64Data.length, 'bytes');
 
-    // Prepare payload - send frame, not full video
-    const payload = {
-      frame: frameBase64, // Single JPEG frame
+    // Prepare payload with correct field name
+    const payload: any = {
       timestamp: new Date().toISOString(),
     };
 
-    console.log('[AWS] Sending to Lambda...');
+    if (type === 'frame') {
+      payload.frame = base64Data;
+    } else {
+      payload.video = base64Data;
+    }
+
+    console.log('[AWS] Sending to Lambda as', type, '...');
 
     // Call Lambda function
     const response = await fetch(LAMBDA_ENDPOINT, {
