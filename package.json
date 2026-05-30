@@ -7,6 +7,7 @@
     "@aws-sdk/client-lambda": "^3.1056.0",
     "@expo/ui": "~56.0.15",
     "@expo/vector-icons": "^15.1.1",
+    "@react-navigation/native": "^7.2.5",
     "expo": "~56.0.8",
     "expo-camera": "^56.0.7",
     "expo-constants": "~56.0.16",
