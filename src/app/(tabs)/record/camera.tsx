@@ -309,7 +309,6 @@ export default function CameraScreen() {
   };
 
   const handleRecordButtonPress = async () => {
-    console.log('Record button pressed, isRecording:', isRecordingRef.current);
     if (!cameraRef.current) {
       Alert.alert('Error', 'Camera not ready');
       return;
@@ -318,26 +317,40 @@ export default function CameraScreen() {
     try {
       if (!isRecordingRef.current) {
         // Start recording
-        console.log('Starting recording...');
         isRecordingRef.current = true;
         setIsRecording(true);
         setRecordingTime(0);
-        const video = await (cameraRef.current as any).recordAsync();
-        console.log('Recording stopped, video:', video);
-        handleVideoRecorded(video);
+        
+        // Start recording without await - it returns when stopRecording is called
+        const recordingPromise = (cameraRef.current as any).recordAsync();
+        recordingPromise
+          .then((video: any) => {
+            handleVideoRecorded(video);
+          })
+          .catch((error: any) => {
+            console.error('Recording promise error:', error);
+            isRecordingRef.current = false;
+            setIsRecording(false);
+            Alert.alert('Error', `Recording failed: ${error.message || 'Unknown error'}`);
+          });
       } else {
         // Stop recording
-        console.log('Stopping recording...');
         isRecordingRef.current = false;
         setIsRecording(false);
-        await (cameraRef.current as any).stopRecording();
-        console.log('Recording stopped');
+        
+        if (cameraRef.current && typeof (cameraRef.current as any).stopRecording === 'function') {
+          try {
+            await (cameraRef.current as any).stopRecording();
+          } catch (stopError) {
+            console.error('Stop recording error:', stopError);
+          }
+        }
       }
     } catch (error) {
       console.error('Button press error:', error);
       isRecordingRef.current = false;
       setIsRecording(false);
-      Alert.alert('Error', 'Failed to record video');
+      Alert.alert('Error', `Failed to record video: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
