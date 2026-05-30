@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 interface AnalysisResult {
   exercise: string;
@@ -28,7 +28,7 @@ export async function uploadVideoAndAnalyze(videoUri: string): Promise<AnalysisR
     }
 
     const base64Video = await FileSystem.readAsStringAsync(videoUri, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64',
     });
 
     // Prepare the request payload

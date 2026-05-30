@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRef, useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -261,13 +261,13 @@ export default function CameraScreen() {
     try {
       console.log('[SAVE] Saving video from:', videoPath);
       
-      const appDir = FileSystem.documentDirectory + 'FormCritic/';
+      const appDir = FileSystemLegacy.documentDirectory + 'FormCritic/';
       console.log('[SAVE] Target directory:', appDir);
       
-      const dirInfo = await FileSystem.getInfoAsync(appDir);
+      const dirInfo = await FileSystemLegacy.getInfoAsync(appDir);
       if (!dirInfo.exists) {
         console.log('[SAVE] Creating directory...');
-        await FileSystem.makeDirectoryAsync(appDir, { intermediates: true });
+        await FileSystemLegacy.makeDirectoryAsync(appDir, { intermediates: true });
       }
 
       const timestamp = Date.now();
@@ -275,7 +275,7 @@ export default function CameraScreen() {
       const newPath = appDir + filename;
 
       console.log('[SAVE] Copying to:', newPath);
-      await FileSystem.copyAsync({
+      await FileSystemLegacy.copyAsync({
         from: videoPath,
         to: newPath,
       });
