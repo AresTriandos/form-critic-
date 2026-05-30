@@ -63,8 +63,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "fe2859a2-ab03-4603-b916-93c6c98dcd0b"
+        "projectId": "2471218d-101e-489c-a496-35bfa920f045"
       }
-    }
+    },
+    "owner": "ares.triandos"
   }
 }
