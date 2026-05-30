@@ -1,5 +1,5 @@
 import { StyleSheet, View, TouchableOpacity, Text, useColorScheme, Alert, Linking } from 'react-native';
-import { Camera, useCameraPermission, useCameraDevice } from 'react-native-vision-camera';
+import { Camera, useCameraPermission } from 'react-native-vision-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { useRef, useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
@@ -8,7 +8,6 @@ import * as FileSystem from 'expo-file-system';
 
 export default function CameraScreen() {
   const { hasPermission, requestPermission } = useCameraPermission();
-  const device = useCameraDevice('back');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const cameraRef = useRef<Camera>(null);
@@ -20,9 +19,7 @@ export default function CameraScreen() {
   // Request permission on mount
   useEffect(() => {
     if (!hasPermission) {
-      requestPermission().catch((error) => {
-        console.error('Permission request failed:', error);
-      });
+      requestPermission();
     }
   }, [hasPermission]);
 
@@ -161,39 +158,84 @@ export default function CameraScreen() {
     Linking.openSettings();
   };
 
-  // No camera device available
-  if (!device) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.permissionContainer}>
-          <Ionicons name="alert-circle" size={56} color="#ff6b6b" style={styles.permissionIcon} />
-          <Text style={styles.permissionTitle}>Camera Not Available</Text>
-          <Text style={styles.permissionText}>
-            Your device doesn't have a camera or it's not accessible.
-          </Text>
-          <View style={styles.buttonGroup}>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => router.back()}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.secondaryButtonText}>Go Back</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const handleStartRecord = async () => {
+    try {
+      if (!cameraRef.current) {
+        Alert.alert('Error', 'Camera not ready');
+        return;
+      }
 
-  // Permission not granted
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      const video = await (cameraRef.current as any).startRecording({
+        onRecordingFinished: (video: any) => {
+          console.log('Video recorded:', video.path);
+          saveVideoLocally(video.path);
+        },
+        onRecordingError: (error: any) => {
+          console.error('Recording error:', error);
+          Alert.alert('Error', error?.message || 'Recording failed');
+          setIsRecording(false);
+        },
+      });
+    } catch (error: any) {
+      console.error('Error:', error);
+      Alert.alert('Error', error?.message || 'Failed to start recording');
+      setIsRecording(false);
+    }
+  };
+
+  const handleStopRecord = async () => {
+    try {
+      if (!cameraRef.current) return;
+      await (cameraRef.current as any).stopRecording();
+      setIsRecording(false);
+    } catch (error: any) {
+      console.error('Stop error:', error);
+      setIsRecording(false);
+    }
+  };
+
+  const saveVideoLocally = async (videoPath: string) => {
+    try {
+      const appDir = FileSystem.documentDirectory + 'FormCritic/';
+      const dirInfo = await FileSystem.getInfoAsync(appDir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(appDir, { intermediates: true });
+      }
+
+      const timestamp = Date.now();
+      const filename = `workout_${timestamp}.mp4`;
+      const newPath = appDir + filename;
+
+      await FileSystem.copyAsync({
+        from: videoPath,
+        to: newPath,
+      });
+
+      router.push({
+        pathname: '/record/processing',
+        params: {
+          videoUri: newPath,
+          timestamp: timestamp.toString(),
+        },
+      });
+    } catch (error: any) {
+      console.error('Save error:', error);
+      Alert.alert('Error', 'Failed to save video');
+      setIsRecording(false);
+    }
+  };
+
   if (!hasPermission) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.permissionContainer}>
           <Ionicons name="alert-circle" size={56} color="#ff6b6b" style={styles.permissionIcon} />
-          <Text style={styles.permissionTitle}>Camera Access Denied</Text>
+          <Text style={styles.permissionTitle}>Camera Access Needed</Text>
           <Text style={styles.permissionText}>
-            To record exercises, please allow camera access in your device settings.
+            FormCritic needs camera access to record your exercise form.
           </Text>
           <View style={styles.buttonGroup}>
             <TouchableOpacity
@@ -216,139 +258,52 @@ export default function CameraScreen() {
     );
   }
 
-  const handleStartRecord = async () => {
-    try {
-      if (!cameraRef.current) {
-        Alert.alert('Error', 'Camera not ready');
-        return;
-      }
-
-      console.log('Starting video recording...');
-      setIsRecording(true);
-      setRecordingTime(0);
-
-      const video = await cameraRef.current.startRecording({
-        onRecordingFinished: (video) => {
-          console.log('Recording finished:', video.path);
-          saveVideoLocally(video.path);
-        },
-        onRecordingError: (error) => {
-          console.error('Recording error:', error);
-          Alert.alert('Recording Error', error.message);
-          setIsRecording(false);
-        },
-      });
-
-      console.log('Recording started');
-    } catch (error: any) {
-      console.error('Start recording error:', error);
-      Alert.alert('Error', `Failed to start recording: ${error?.message || error}`);
-      setIsRecording(false);
-    }
-  };
-
-  const handleStopRecord = async () => {
-    try {
-      if (!cameraRef.current) {
-        return;
-      }
-
-      console.log('Stopping video recording...');
-      await cameraRef.current.stopRecording();
-      console.log('Recording stopped');
-      setIsRecording(false);
-    } catch (error: any) {
-      console.error('Stop recording error:', error);
-      Alert.alert('Error', `Failed to stop recording: ${error?.message || error}`);
-      setIsRecording(false);
-    }
-  };
-
-  const saveVideoLocally = async (videoPath: string) => {
-    try {
-      console.log('Saving video from:', videoPath);
-      
-      // Create app documents directory
-      const appDir = FileSystem.documentDirectory + 'FormCritic/';
-      const dirInfo = await FileSystem.getInfoAsync(appDir);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(appDir, { intermediates: true });
-      }
-
-      // Save with timestamp
-      const timestamp = Date.now();
-      const filename = `workout_${timestamp}.mp4`;
-      const newPath = appDir + filename;
-
-      await FileSystem.copyAsync({
-        from: videoPath,
-        to: newPath,
-      });
-
-      console.log('Video saved to:', newPath);
-
-      // Navigate to processing with local path
-      router.push({
-        pathname: '/record/processing',
-        params: {
-          videoUri: newPath,
-          timestamp: timestamp.toString(),
-        },
-      });
-    } catch (error: any) {
-      console.error('Save video error:', error);
-      Alert.alert('Error', 'Failed to save video. Please try again.');
-      setIsRecording(false);
-    }
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={[]}>
       <Camera
         ref={cameraRef}
         style={styles.camera}
-        device={device}
         isActive={true}
         video={true}
         audio={true}
-      >
-        <View style={styles.overlay}>
-          <View style={styles.controls}>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => router.back()}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="chevron-back" size={24} color="#ffffff" />
-              <Text style={styles.cancelText}>Back</Text>
-            </TouchableOpacity>
+      />
 
-            <TouchableOpacity
-              style={styles.recordButton}
-              onPress={isRecording ? handleStopRecord : handleStartRecord}
-              activeOpacity={0.8}
-            >
-              {isRecording ? (
-                <Ionicons name="stop" size={40} color="#ffffff" />
-              ) : (
-                <Ionicons name="radio-button-on" size={40} color="#ffffff" />
-              )}
-            </TouchableOpacity>
+      <View style={styles.overlay}>
+        <View style={styles.controls}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => router.back()}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="chevron-back" size={24} color="#ffffff" />
+            <Text style={styles.cancelText}>Back</Text>
+          </TouchableOpacity>
 
-            <View style={{ width: 80 }} />
-          </View>
+          <TouchableOpacity
+            style={styles.recordButton}
+            onPress={isRecording ? handleStopRecord : handleStartRecord}
+            activeOpacity={0.8}
+          >
+            {isRecording ? (
+              <Ionicons name="stop" size={40} color="#ffffff" />
+            ) : (
+              <Ionicons name="radio-button-on" size={40} color="#ffffff" />
+            )}
+          </TouchableOpacity>
 
-          {isRecording && (
-            <View style={styles.timerContainer}>
-              <Text style={styles.timer}>
-                {String(Math.floor((recordingTime / 1000) / 60)).padStart(2, '0')}:
-                {String(Math.floor((recordingTime / 1000) % 60)).padStart(2, '0')}
-              </Text>
-              <Text style={styles.timerLabel}>Recording</Text>
-            </View>
-          )}
+          <View style={{ width: 80 }} />
         </View>
-      </Camera>
+
+        {isRecording && (
+          <View style={styles.timerContainer}>
+            <Text style={styles.timer}>
+              {String(Math.floor((recordingTime / 1000) / 60)).padStart(2, '0')}:
+              {String(Math.floor((recordingTime / 1000) % 60)).padStart(2, '0')}
+            </Text>
+            <Text style={styles.timerLabel}>Recording</Text>
+          </View>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
