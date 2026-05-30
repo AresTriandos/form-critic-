@@ -1,49 +1,30 @@
 import { StyleSheet, View, TouchableOpacity, Text, useColorScheme, Alert, Linking } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Camera, useCameraPermission, useCameraDevice } from 'react-native-vision-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { useRef, useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system';
-import { Colors } from '@/constants/theme';
 
 export default function CameraScreen() {
-  const [permission, requestPermission] = useCameraPermissions();
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const device = useCameraDevice('back');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [permissionRequested, setPermissionRequested] = useState(false);
-  const [cameraReady, setCameraReady] = useState(false);
-  const cameraRef = useRef(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isRecordingRef = useRef(false);
+  const cameraRef = useRef<Camera>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
 
-  // Request permission on mount and wait for camera to initialize
+  // Request permission on mount
   useEffect(() => {
-    requestPermission().then((result) => {
-      setPermissionRequested(true);
-      if (!result.granted && result.canAskAgain) {
-        Alert.alert(
-          'Camera Access Required',
-          'FormCritic needs access to your camera to record exercises.',
-          [
-            { text: 'Not now', onPress: () => router.back(), style: 'cancel' },
-            { text: 'Allow', onPress: requestPermission, style: 'default' },
-          ]
-        );
-      }
-    });
-    
-    // Give camera 2 seconds to initialize
-    const timer = setTimeout(() => {
-      setCameraReady(true);
-    }, 2000);
-    
-    return () => clearTimeout(timer);
-  }, []);
+    if (!hasPermission) {
+      requestPermission().catch((error) => {
+        console.error('Permission request failed:', error);
+      });
+    }
+  }, [hasPermission]);
 
   // Timer for recording
   useEffect(() => {
@@ -62,7 +43,7 @@ export default function CameraScreen() {
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: isDark ? '#000' : '#fff',
     },
     camera: {
       flex: 1,
@@ -103,7 +84,6 @@ export default function CameraScreen() {
       fontSize: 18,
       fontWeight: '700',
       color: '#ff4444',
-      fontVariant: ['tabular-nums'],
     },
     timerLabel: {
       fontSize: 12,
@@ -134,12 +114,12 @@ export default function CameraScreen() {
     permissionTitle: {
       fontSize: 22,
       fontWeight: '700',
-      color: colors.text,
+      color: isDark ? '#fff' : '#000',
       marginBottom: 12,
       textAlign: 'center',
     },
     permissionText: {
-      color: colors.textSecondary,
+      color: isDark ? '#ccc' : '#666',
       fontSize: 16,
       marginBottom: 24,
       textAlign: 'center',
@@ -157,21 +137,21 @@ export default function CameraScreen() {
       alignItems: 'center',
     },
     secondaryButton: {
-      backgroundColor: colors.backgroundElement,
+      backgroundColor: isDark ? '#1a1a1a' : '#f9f9f9',
       paddingVertical: 14,
       paddingHorizontal: 24,
       borderRadius: 10,
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: colors.backgroundSelected,
+      borderColor: isDark ? '#333' : '#ddd',
     },
     buttonText: {
-      color: '#ffffff',
+      color: '#fff',
       fontWeight: '600',
       fontSize: 16,
     },
     secondaryButtonText: {
-      color: colors.text,
+      color: isDark ? '#fff' : '#000',
       fontWeight: '600',
       fontSize: 16,
     },
@@ -181,37 +161,36 @@ export default function CameraScreen() {
     Linking.openSettings();
   };
 
-  // Loading permissions
-  if (!permissionRequested) {
+  // No camera device available
+  if (!device) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container}>
         <View style={styles.permissionContainer}>
-          <Ionicons
-            name="camera"
-            size={56}
-            color="#0a7ea4"
-            style={styles.permissionIcon}
-          />
-          <Text style={styles.permissionTitle}>Enable Camera</Text>
+          <Ionicons name="alert-circle" size={56} color="#ff6b6b" style={styles.permissionIcon} />
+          <Text style={styles.permissionTitle}>Camera Not Available</Text>
           <Text style={styles.permissionText}>
-            FormCritic needs camera access to record and analyze your exercise form.
+            Your device doesn't have a camera or it's not accessible.
           </Text>
+          <View style={styles.buttonGroup}>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => router.back()}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.secondaryButtonText}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );
   }
 
-  // Permission denied
-  if (!permission?.granted) {
+  // Permission not granted
+  if (!hasPermission) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container}>
         <View style={styles.permissionContainer}>
-          <Ionicons
-            name="alert-circle"
-            size={56}
-            color="#ff6b6b"
-            style={styles.permissionIcon}
-          />
+          <Ionicons name="alert-circle" size={56} color="#ff6b6b" style={styles.permissionIcon} />
           <Text style={styles.permissionTitle}>Camera Access Denied</Text>
           <Text style={styles.permissionText}>
             To record exercises, please allow camera access in your device settings.
@@ -238,45 +217,57 @@ export default function CameraScreen() {
   }
 
   const handleStartRecord = async () => {
-    if (cameraRef.current && !isRecordingRef.current) {
-      try {
-        isRecordingRef.current = true;
-        setIsRecording(true);
-        setRecordingTime(0);
-        const video = await (cameraRef.current as any).recordAsync();
-        handleVideoRecorded(video);
-      } catch (error) {
-        console.error('Recording error:', error);
-        isRecordingRef.current = false;
-        setIsRecording(false);
+    try {
+      if (!cameraRef.current) {
+        Alert.alert('Error', 'Camera not ready');
+        return;
       }
+
+      console.log('Starting video recording...');
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      const video = await cameraRef.current.startRecording({
+        onRecordingFinished: (video) => {
+          console.log('Recording finished:', video.path);
+          saveVideoLocally(video.path);
+        },
+        onRecordingError: (error) => {
+          console.error('Recording error:', error);
+          Alert.alert('Recording Error', error.message);
+          setIsRecording(false);
+        },
+      });
+
+      console.log('Recording started');
+    } catch (error: any) {
+      console.error('Start recording error:', error);
+      Alert.alert('Error', `Failed to start recording: ${error?.message || error}`);
+      setIsRecording(false);
     }
   };
 
   const handleStopRecord = async () => {
-    if (cameraRef.current && isRecordingRef.current) {
-      try {
-        isRecordingRef.current = false;
-        setIsRecording(false);
-        await (cameraRef.current as any).stopRecording();
-      } catch (error) {
-        console.error('Stop recording error:', error);
-      }
-    }
-  };
-
-  const handleVideoRecorded = (video: any) => {
-    isRecordingRef.current = false;
-    setIsRecording(false);
-    if (video && video.uri) {
-      saveVideoLocally(video.uri);
-    } else {
-      Alert.alert('Error', 'No video recorded. Please try again.');
-    }
-  };
-
-  const saveVideoLocally = async (videoUri: string) => {
     try {
+      if (!cameraRef.current) {
+        return;
+      }
+
+      console.log('Stopping video recording...');
+      await cameraRef.current.stopRecording();
+      console.log('Recording stopped');
+      setIsRecording(false);
+    } catch (error: any) {
+      console.error('Stop recording error:', error);
+      Alert.alert('Error', `Failed to stop recording: ${error?.message || error}`);
+      setIsRecording(false);
+    }
+  };
+
+  const saveVideoLocally = async (videoPath: string) => {
+    try {
+      console.log('Saving video from:', videoPath);
+      
       // Create app documents directory
       const appDir = FileSystem.documentDirectory + 'FormCritic/';
       const dirInfo = await FileSystem.getInfoAsync(appDir);
@@ -290,9 +281,11 @@ export default function CameraScreen() {
       const newPath = appDir + filename;
 
       await FileSystem.copyAsync({
-        from: videoUri,
+        from: videoPath,
         to: newPath,
       });
+
+      console.log('Video saved to:', newPath);
 
       // Navigate to processing with local path
       router.push({
@@ -302,88 +295,22 @@ export default function CameraScreen() {
           timestamp: timestamp.toString(),
         },
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Save video error:', error);
       Alert.alert('Error', 'Failed to save video. Please try again.');
-    }
-  };
-
-  const toggleRecording = () => {
-    if (isRecordingRef.current) {
-      handleStopRecord();
-    } else {
-      handleStartRecord();
-    }
-  };
-
-  const handleRecordButtonPress = async () => {
-    if (!cameraRef.current) {
-      Alert.alert('Error', 'Camera ref not available');
-      return;
-    }
-    
-    if (!cameraReady) {
-      Alert.alert('Error', 'Camera is still initializing. Please wait.');
-      return;
-    }
-    
-    try {
-      if (!isRecordingRef.current) {
-        // Start recording
-        console.log('Attempting to start recording...');
-        
-        // Check if recordAsync exists
-        if (!cameraRef.current || typeof (cameraRef.current as any).recordAsync !== 'function') {
-          Alert.alert('Error', 'Camera recordAsync method not available');
-          return;
-        }
-        
-        isRecordingRef.current = true;
-        setIsRecording(true);
-        setRecordingTime(0);
-        
-        // Start recording
-        try {
-          const video = await (cameraRef.current as any).recordAsync();
-          console.log('Recording completed, video:', video);
-          handleVideoRecorded(video);
-        } catch (recordError: any) {
-          console.error('RecordAsync error:', recordError);
-          isRecordingRef.current = false;
-          setIsRecording(false);
-          Alert.alert('Error', `Recording error: ${recordError?.message || recordError || 'Unknown'}`);
-        }
-      } else {
-        // Stop recording
-        console.log('Stopping recording...');
-        isRecordingRef.current = false;
-        setIsRecording(false);
-        
-        try {
-          await (cameraRef.current as any).stopRecording();
-          console.log('Stop recording success');
-        } catch (stopError) {
-          console.error('Stop recording error:', stopError);
-        }
-      }
-    } catch (error) {
-      console.error('Button press error:', error);
-      isRecordingRef.current = false;
       setIsRecording(false);
-      Alert.alert('Error', `Failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      <CameraView 
-        ref={cameraRef} 
-        style={styles.camera} 
-        facing="back"
-        onCameraReady={() => {
-          console.log('Camera is ready!');
-          setCameraReady(true);
-        }}
+      <Camera
+        ref={cameraRef}
+        style={styles.camera}
+        device={device}
+        isActive={true}
+        video={true}
+        audio={true}
       >
         <View style={styles.overlay}>
           <View style={styles.controls}>
@@ -398,7 +325,7 @@ export default function CameraScreen() {
 
             <TouchableOpacity
               style={styles.recordButton}
-              onPress={handleRecordButtonPress}
+              onPress={isRecording ? handleStopRecord : handleStartRecord}
               activeOpacity={0.8}
             >
               {isRecording ? (
@@ -421,7 +348,7 @@ export default function CameraScreen() {
             </View>
           )}
         </View>
-      </CameraView>
+      </Camera>
     </SafeAreaView>
   );
 }
