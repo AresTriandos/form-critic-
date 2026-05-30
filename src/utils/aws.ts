@@ -1,5 +1,4 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { Video, AVPlaybackStatus } from 'expo-av';
 
 interface AnalysisResult {
   exercise: string;
@@ -11,63 +10,31 @@ interface AnalysisResult {
 
 // Configuration
 const LAMBDA_ENDPOINT = 'https://hevgy4dagmgawsrafitpkjahbq0ydunt.lambda-url.us-east-1.on.aws/';
-const FRAMES_TO_EXTRACT = 6; // Extract key frames from video
 
 /**
- * Extract key frames from a video file
- * For now, we'll read the video file and create sample frames
- * In production, you'd use react-native-video-processing or similar
- */
-async function extractFramesFromVideo(videoUri: string): Promise<string[]> {
-  try {
-    console.log('Reading video file for frame extraction...');
-    
-    // Read the video as base64 (this is the whole video currently)
-    // In a real implementation, we'd extract actual frames from the video
-    // For now, we'll send the video itself and let Claude analyze it
-    const base64Video = await FileSystem.readAsStringAsync(videoUri, {
-      encoding: 'base64',
-    });
-
-    // For MVP: Return the video as a single "frame" that Claude can analyze
-    // Claude can handle video frames or we could split this into chunks
-    console.log('Video loaded, size:', base64Video.length, 'bytes');
-    
-    return [base64Video]; // Return video as single frame for Claude to analyze
-  } catch (error) {
-    console.error('Frame extraction error:', error);
-    throw new Error('Failed to extract frames from video');
-  }
-}
-
-/**
- * Upload video to Lambda for analysis
- * The Lambda function will:
- * - Receive video frames
- * - Send to Claude Vision API
- * - Return form critique
+ * Upload video to Lambda for analysis with Gemini 2.0
+ * Gemini natively supports video, no frame extraction needed
  */
 export async function uploadVideoAndAnalyze(videoUri: string): Promise<AnalysisResult> {
   try {
     console.log('[AWS] Starting analysis for video:', videoUri);
 
-    // Extract frames from video
-    console.log('[AWS] Extracting frames...');
-    const frames = await extractFramesFromVideo(videoUri);
-    console.log('[AWS] Extracted', frames.length, 'frames');
+    // Read video as base64
+    console.log('[AWS] Reading video file...');
+    const base64Video = await FileSystem.readAsStringAsync(videoUri, {
+      encoding: 'base64',
+    });
 
-    if (frames.length === 0) {
-      throw new Error('No frames extracted from video');
-    }
+    console.log('[AWS] Video size:', base64Video.length, 'bytes');
 
-    // Prepare the request payload with frames
+    // Prepare payload - Gemini 2.0 handles video natively
     const payload = {
-      frames: frames, // Send extracted frames
+      video: base64Video, // Send full video to Gemini
       timestamp: new Date().toISOString(),
     };
 
     console.log('[AWS] Sending to Lambda...');
-    
+
     // Call Lambda function
     const response = await fetch(LAMBDA_ENDPOINT, {
       method: 'POST',
@@ -75,7 +42,7 @@ export async function uploadVideoAndAnalyze(videoUri: string): Promise<AnalysisR
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
-      timeout: 120000, // 2 minute timeout for processing
+      timeout: 180000, // 3 minute timeout for video processing
     } as any);
 
     console.log('[AWS] Lambda response status:', response.status);
@@ -123,14 +90,14 @@ export async function testLambdaConnection(): Promise<boolean> {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
-        frames: [],
+      body: JSON.stringify({
+        video: null,
         timestamp: new Date().toISOString(),
       }),
     } as any);
-    
+
     console.log('[AWS] Lambda test response:', response.status);
-    return response.status === 400; // 400 is expected for empty frames (better than 500)
+    return response.status === 400; // 400 expected for null video (not a 500 error)
   } catch (error) {
     console.error('[AWS] Lambda connection test failed:', error);
     return false;

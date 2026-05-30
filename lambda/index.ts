@@ -1,8 +1,8 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 interface AnalysisPayload {
-  frames?: string[]; // base64 encoded frames OR full video for backward compat
-  video?: string; // base64 encoded video (legacy)
+  video?: string; // base64 encoded video
+  frames?: string[]; // base64 encoded frames (legacy)
   videoSize?: number;
   timestamp: string;
 }
@@ -15,41 +15,21 @@ interface AnalysisResponse {
   processingTime: number;
 }
 
-const client = new Anthropic();
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
 
 /**
- * Analyze exercise form using Claude Vision API
- * Accepts either frames (preferred) or video (legacy)
+ * Analyze exercise form using Google Gemini 2.0 Vision API
+ * Gemini natively supports video analysis
  */
-async function analyzeForm(frames: string[]): Promise<Partial<AnalysisResponse>> {
+async function analyzeForm(videoBase64: string): Promise<Partial<AnalysisResponse>> {
   try {
-    if (frames.length === 0) {
-      throw new Error('No frames provided for analysis');
-    }
+    console.log('Initializing Gemini model...');
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-    // Build the message with all frames
-    const imageContent = frames.map((frame) => {
-      // Remove data URL prefix if present
-      const base64Data = frame.includes('base64,')
-        ? frame.split('base64,')[1]
-        : frame;
+    // Create the prompt
+    const prompt = `You are an expert fitness coach analyzing exercise form from a video.
 
-      return {
-        type: 'image' as const,
-        source: {
-          type: 'base64' as const,
-          media_type: 'image/jpeg' as const,
-          data: base64Data,
-        },
-      };
-    });
-
-    // Add text prompt
-    imageContent.push({
-      type: 'text' as const,
-      text: `You are an expert fitness coach analyzing exercise form from video frames.
-
-Analyze the exercise shown in these frames and provide:
+Analyze the exercise shown in this video and provide:
 
 1. Exercise Name: Identify the specific exercise being performed
 2. Form Score: Rate the form quality from 0-100 (100 = perfect form)
@@ -64,38 +44,37 @@ IMPORTANT: You must return a valid JSON response with this exact structure:
   "keyCues": ["Cue 1", "Cue 2", "Cue 3"]
 }
 
-Only return the JSON, no other text.`,
-    });
+Only return the JSON, no other text.`;
 
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content: imageContent as any,
+    // Send to Gemini with video
+    console.log('Sending video to Gemini for analysis...');
+    const response = await model.generateContent([
+      {
+        inlineData: {
+          mimeType: 'video/mp4',
+          data: videoBase64,
         },
-      ],
-    });
+      },
+      prompt,
+    ]);
 
-    // Extract text content
-    const textContent = response.content.find((c) => c.type === 'text');
-    if (!textContent || textContent.type !== 'text') {
-      throw new Error('No text response from Claude');
-    }
+    const result = await response.response;
+    const textContent = result.text();
+
+    console.log('Gemini response received');
 
     // Parse the JSON response
     let analysisData;
     try {
       // Remove markdown code blocks if present
-      let jsonStr = textContent.text
+      let jsonStr = textContent
         .replace(/```json\n?/g, '')
         .replace(/```\n?/g, '')
         .trim();
       analysisData = JSON.parse(jsonStr);
     } catch (parseError) {
-      console.error('JSON parse error:', textContent.text);
-      throw new Error('Failed to parse Claude response as JSON');
+      console.error('JSON parse error:', textContent);
+      throw new Error('Failed to parse Gemini response as JSON');
     }
 
     return {
@@ -131,27 +110,28 @@ export async function handler(event: any): Promise<any> {
     }
 
     console.log('Received request');
-    console.log('Has frames:', !!payload.frames);
     console.log('Has video:', !!payload.video);
+    console.log('Has frames:', !!payload.frames);
 
-    // Use frames if provided, otherwise return error
-    const frames = payload.frames || [];
-    if (frames.length === 0) {
-      console.error('No frames provided in payload');
+    // Use video if provided, otherwise try frames
+    const videoBase64 = payload.video;
+
+    if (!videoBase64) {
+      console.error('No video provided in payload');
       return {
         statusCode: 400,
         body: JSON.stringify({
-          error: 'No frames provided',
-          hint: 'Send extracted frames from the app',
+          error: 'No video provided',
+          hint: 'Send base64 encoded MP4 video in payload.video',
         }),
         headers: { 'Content-Type': 'application/json' },
       };
     }
 
-    console.log(`Processing ${frames.length} frames for analysis...`);
+    console.log('Video size:', videoBase64.length, 'bytes');
 
     // Analyze form
-    const analysis = await analyzeForm(frames);
+    const analysis = await analyzeForm(videoBase64);
 
     // Calculate processing time
     const processingTime = Date.now() - startTime;

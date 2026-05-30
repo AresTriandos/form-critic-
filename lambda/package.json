@@ -1,14 +1,14 @@
 {
   "name": "form-critic-lambda",
   "version": "1.0.0",
-  "description": "AWS Lambda handler for exercise form analysis",
+  "description": "AWS Lambda handler for exercise form analysis using Google Gemini",
   "main": "index.ts",
   "scripts": {
     "build": "esbuild index.ts --bundle --platform=node --target=node18 --external:aws-sdk --outfile=dist/index.js",
     "deploy": "npm run build && zip -r function.zip dist/ node_modules/ && aws lambda update-function-code --function-name form-critic-analyzer --zip-file fileb://function.zip"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.24.3"
+    "@google/generative-ai": "^0.12.0"
   },
   "devDependencies": {
     "@types/node": "^20",
