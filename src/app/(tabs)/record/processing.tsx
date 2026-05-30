@@ -13,7 +13,7 @@ interface AnalysisResult {
 }
 
 export default function ProcessingScreen() {
-  const { videoUri } = useLocalSearchParams<{ videoUri: string }>();
+  const { videoUri, timestamp } = useLocalSearchParams<{ videoUri: string; timestamp: string }>();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -61,11 +61,12 @@ export default function ProcessingScreen() {
 
       try {
         const result: AnalysisResult = await uploadVideoAndAnalyze(videoUri);
-        // Navigate to results with the analysis data
+        // Navigate to results with the analysis data + video URI
         router.push({
           pathname: '/record/results',
           params: {
             analysis: JSON.stringify(result),
+            videoUri: videoUri,
           },
         });
       } catch (err) {

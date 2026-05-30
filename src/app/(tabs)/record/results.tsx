@@ -19,10 +19,11 @@ interface AnalysisResult {
   critique: string;
   keyCues: string[];
   timestamp: string;
+  videoUri?: string;
 }
 
 export default function ResultsScreen() {
-  const { analysis: analysisStr } = useLocalSearchParams<{ analysis: string }>();
+  const { analysis: analysisStr, videoUri } = useLocalSearchParams<{ analysis: string; videoUri: string }>();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -37,6 +38,11 @@ export default function ResultsScreen() {
         keyCues: [],
         timestamp: new Date().toISOString(),
       };
+
+  // Add videoUri to analysis if provided
+  if (videoUri && !analysis.videoUri) {
+    analysis.videoUri = videoUri;
+  }
 
   const styles = StyleSheet.create({
     container: {
@@ -177,12 +183,13 @@ export default function ResultsScreen() {
       const existingHistory = await SecureStore.getItemAsync('workout_history');
       const history = existingHistory ? JSON.parse(existingHistory) : [];
 
-      // Add new result
+      // Add new result with video URI
       history.push({
         id: Date.now().toString(),
         ...analysis,
+        videoUri: videoUri || analysis.videoUri, // Include video path
         savedAt: new Date().toISOString(),
-      });
+      });}
 
       // Save back to SecureStore
       await SecureStore.setItemAsync('workout_history', JSON.stringify(history));

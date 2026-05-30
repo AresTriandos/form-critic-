@@ -4,15 +4,19 @@ import {
   Text,
   TouchableOpacity,
   useColorScheme,
-  FlatList,
   SectionList,
   ActivityIndicator,
+  Modal,
+  Alert,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
+import { Video, ResizeMode } from 'expo-av';
+import { Colors } from '@/src/constants/theme';
 
 interface WorkoutResult {
   id: string;
@@ -22,29 +26,33 @@ interface WorkoutResult {
   keyCues: string[];
   timestamp: string;
   savedAt: string;
+  videoUri?: string;
 }
 
 export default function HistoryScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
+  const colors = isDark ? Colors.dark : Colors.light;
   const [results, setResults] = useState<WorkoutResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutResult | null>(null);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
 
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+      backgroundColor: colors.background,
     },
     header: {
       paddingHorizontal: 20,
       paddingVertical: 16,
-      borderBottomColor: isDark ? '#333' : '#e5e5e5',
+      borderBottomColor: colors.backgroundElement,
       borderBottomWidth: 1,
     },
     headerTitle: {
       fontSize: 24,
-      fontWeight: '600',
-      color: isDark ? '#ffffff' : '#000000',
+      fontWeight: '700',
+      color: colors.text,
     },
     emptyContainer: {
       flex: 1,
@@ -57,8 +65,9 @@ export default function HistoryScreen() {
     },
     emptyText: {
       fontSize: 16,
-      color: isDark ? '#aaaaaa' : '#888888',
+      color: colors.textSecondary,
       textAlign: 'center',
+      lineHeight: 24,
     },
     listContainer: {
       flex: 1,
@@ -68,50 +77,45 @@ export default function HistoryScreen() {
       marginVertical: 8,
       paddingHorizontal: 16,
       paddingVertical: 14,
-      backgroundColor: isDark ? '#2a2a2a' : '#f9f9f9',
+      backgroundColor: colors.backgroundElement,
       borderRadius: 12,
-      borderColor: isDark ? '#333' : '#e5e5e5',
+      borderColor: colors.backgroundSelected,
       borderWidth: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      shadowColor: colors.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
     },
     resultInfo: {
       flex: 1,
     },
     exerciseName: {
       fontSize: 16,
-      fontWeight: '600',
-      color: isDark ? '#ffffff' : '#000000',
+      fontWeight: '700',
+      color: colors.text,
       marginBottom: 4,
     },
     resultMeta: {
-      fontSize: 12,
-      color: isDark ? '#aaaaaa' : '#888888',
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 18,
     },
     scoreBox: {
       minWidth: 50,
-      paddingVertical: 6,
-      paddingHorizontal: 10,
-      borderRadius: 6,
-      backgroundColor:
-        (results[0] as any)?.score >= 80
-          ? 'rgba(76, 175, 80, 0.2)'
-          : (results[0] as any)?.score >= 60
-            ? 'rgba(255, 152, 0, 0.2)'
-            : 'rgba(244, 67, 54, 0.2)',
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 8,
       justifyContent: 'center',
       alignItems: 'center',
+      marginLeft: 12,
     },
     scoreText: {
-      fontSize: 14,
+      fontSize: 16,
       fontWeight: '700',
-      color:
-        (results[0] as any)?.score >= 80
-          ? '#4CAF50'
-          : (results[0] as any)?.score >= 60
-            ? '#FF9800'
-            : '#f44336',
     },
     sectionHeader: {
       paddingHorizontal: 20,
@@ -120,14 +124,105 @@ export default function HistoryScreen() {
     },
     sectionHeaderText: {
       fontSize: 14,
-      fontWeight: '600',
-      color: isDark ? '#aaaaaa' : '#888888',
+      fontWeight: '700',
+      color: colors.textSecondary,
       textTransform: 'uppercase',
     },
     loader: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.95)',
+      justifyContent: 'flex-end',
+    },
+    videoPlayer: {
+      width: '100%',
+      height: 280,
+      backgroundColor: '#000',
+    },
+    playerControls: {
+      backgroundColor: colors.background,
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      borderTopColor: colors.backgroundElement,
+      borderTopWidth: 1,
+    },
+    speedControls: {
+      flexDirection: 'row',
+      marginBottom: 16,
+      gap: 8,
+    },
+    speedButton: {
+      flex: 1,
+      paddingVertical: 10,
+      backgroundColor: colors.backgroundElement,
+      borderRadius: 8,
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: 'transparent',
+    },
+    speedButtonActive: {
+      borderColor: '#0a7ea4',
+    },
+    speedButtonText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    speedButtonTextActive: {
+      color: '#0a7ea4',
+    },
+    analysisSection: {
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      marginBottom: 12,
+    },
+    analysisSectionTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    critiqueText: {
+      fontSize: 14,
+      color: colors.text,
+      lineHeight: 22,
+      marginBottom: 12,
+    },
+    keysCuesList: {
+      gap: 8,
+    },
+    cueBadge: {
+      backgroundColor: colors.backgroundElement,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: '#0a7ea4',
+    },
+    cueText: {
+      fontSize: 13,
+      color: colors.text,
+      fontWeight: '500',
+    },
+    closeButton: {
+      backgroundColor: colors.backgroundElement,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    closeButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    deleteButton: {
+      padding: 8,
     },
   });
 
@@ -222,18 +317,66 @@ export default function HistoryScreen() {
     );
   }
 
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return { box: 'rgba(76, 175, 80, 0.15)', text: '#4CAF50' };
+    if (score >= 60) return { box: 'rgba(255, 152, 0, 0.15)', text: '#FF9800' };
+    return { box: 'rgba(244, 67, 54, 0.15)', text: '#f44336' };
+  };
+
+  const handleDeleteWorkout = (id: string) => {
+    Alert.alert('Delete Workout', 'Are you sure? This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const updated = results.filter((r) => r.id !== id);
+            setResults(updated);
+            await SecureStore.setItemAsync('workout_history', JSON.stringify(updated));
+          } catch (err) {
+            console.error('Delete error:', err);
+          }
+        },
+      },
+    ]);
+  };
+
   const renderItem = ({ item }: { item: WorkoutResult }) => (
-    <View style={styles.resultCard}>
+    <TouchableOpacity
+      style={styles.resultCard}
+      onPress={() => setSelectedWorkout(item)}
+      activeOpacity={0.7}
+    >
       <View style={styles.resultInfo}>
         <Text style={styles.exerciseName}>{item.exercise}</Text>
         <Text style={styles.resultMeta}>
           Score: {item.score}/100 • {new Date(item.timestamp).toLocaleTimeString()}
         </Text>
+        {item.videoUri && (
+          <Text style={[styles.resultMeta, { marginTop: 4, color: '#0a7ea4' }]}>
+            📹 Video saved
+          </Text>
+        )}
       </View>
-      <View style={styles.scoreBox}>
-        <Text style={styles.scoreText}>{item.score}</Text>
+      <View
+        style={[
+          styles.scoreBox,
+          { backgroundColor: getScoreColor(item.score).box },
+        ]}
+      >
+        <Text style={[styles.scoreText, { color: getScoreColor(item.score).text }]}>
+          {item.score}
+        </Text>
       </View>
-    </View>
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => handleDeleteWorkout(item.id)}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="trash-outline" size={20} color={colors.textSecondary} />
+      </TouchableOpacity>
+    </TouchableOpacity>
   );
 
   const renderSectionHeader = ({ section: { title } }: any) => (
@@ -247,13 +390,111 @@ export default function HistoryScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>History</Text>
       </View>
-      <SectionList
-        sections={groupedResults}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        renderSectionHeader={renderSectionHeader}
-        contentContainerStyle={styles.listContainer}
-      />
+      {loading ? (
+        <View style={styles.loader}>
+          <ActivityIndicator size="large" color="#0a7ea4" />
+        </View>
+      ) : results.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIcon}>
+            <Ionicons name="history" size={48} color={colors.backgroundElement} />
+          </View>
+          <Text style={styles.emptyText}>
+            No workouts recorded yet.{' '}
+            <Text style={{ fontWeight: '700' }}>Start by recording an exercise!</Text>
+          </Text>
+        </View>
+      ) : (
+        <SectionList
+          sections={groupedResults}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
+          contentContainerStyle={styles.listContainer}
+        />
+      )}
+
+      {/* Video Playback Modal */}
+      <Modal
+        visible={selectedWorkout !== null}
+        animationType="slide"
+        onRequestClose={() => setSelectedWorkout(null)}
+      >
+        <SafeAreaView style={styles.modalOverlay}>
+          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+            {selectedWorkout?.videoUri && (
+              <Video
+                source={{ uri: selectedWorkout.videoUri }}
+                rate={playbackSpeed}
+                volume={1.0}
+                isMuted={false}
+                resizeMode={ResizeMode.CONTAIN}
+                useNativeControls
+                style={styles.videoPlayer}
+              />
+            )}
+
+            <View style={styles.playerControls}>
+              <Text style={styles.analysisSectionTitle}>Playback Speed</Text>
+              <View style={styles.speedControls}>
+                {[0.5, 0.75, 1, 1.25, 1.5].map((speed) => (
+                  <TouchableOpacity
+                    key={speed}
+                    style={[
+                      styles.speedButton,
+                      playbackSpeed === speed && styles.speedButtonActive,
+                    ]}
+                    onPress={() => setPlaybackSpeed(speed)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.speedButtonText,
+                        playbackSpeed === speed &&
+                          styles.speedButtonTextActive,
+                      ]}
+                    >
+                      {speed}x
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {selectedWorkout && (
+              <>
+                <View style={styles.analysisSection}>
+                  <Text style={styles.analysisSectionTitle}>Analysis</Text>
+                  <Text style={styles.critiqueText}>{selectedWorkout.critique}</Text>
+                </View>
+
+                {selectedWorkout.keyCues && selectedWorkout.keyCues.length > 0 && (
+                  <View style={styles.analysisSection}>
+                    <Text style={styles.analysisSectionTitle}>Key Improvement Cues</Text>
+                    <View style={styles.keysCuesList}>
+                      {selectedWorkout.keyCues.map((cue, idx) => (
+                        <View key={idx} style={styles.cueBadge}>
+                          <Text style={styles.cueText}>{cue}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </>
+            )}
+
+            <View style={styles.analysisSection}>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setSelectedWorkout(null)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
