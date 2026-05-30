@@ -32,13 +32,13 @@ jobs:
       - name: Build iOS app
         env:
           EXPO_TOKEN: ${{ secrets.EAS_TOKEN }}
-        run: npx eas-cli build --platform ios --profile preview --wait
+        run: npx eas-cli build --platform ios --profile production --wait
 
       - name: Submit to TestFlight
         env:
           EXPO_TOKEN: ${{ secrets.EAS_TOKEN }}
           EXPO_APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-        run: npx eas-cli submit --platform ios --profile preview --latest --wait
+        run: npx eas-cli submit --platform ios --profile production --latest --wait
 
       - name: Notify Telegram on Success
         if: success()
