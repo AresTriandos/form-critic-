@@ -1,0 +1,56 @@
+name: Build and Deploy
+
+concurrency:
+  group: ios-testflight-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy to TestFlight
+    runs-on: macos-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build iOS app
+        env:
+          EXPO_TOKEN: ${{ secrets.EAS_TOKEN }}
+          EAS_BUILD_NO_EXPO_GO_WARNING: "true"
+        run: npx eas-cli build --platform ios --profile production --wait
+
+      - name: Submit to TestFlight
+        env:
+          EXPO_TOKEN: ${{ secrets.EAS_TOKEN }}
+          EXPO_APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+        run: npx eas-cli submit --platform ios --profile production --latest --wait
+
+      - name: Notify Telegram on Success
+        if: success()
+        run: |
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "text=✅ FormCritic iOS build ${{ github.run_number }} submitted to TestFlight!"
+
+      - name: Notify Telegram on Failure
+        if: failure()
+        run: |
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "text=❌ FormCritic iOS build ${{ github.run_number }} failed. Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
