@@ -14,8 +14,8 @@ export default function CameraScreen() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingRef = useRef(false);
   const router = useRouter();
-  const params = useLocalSearchParams<{ autoDetect?: string; exerciseName?: string }>();
   const colorScheme = useColorScheme() ?? 'light';
+  const params = useLocalSearchParams<{ autoDetect?: string; exerciseName?: string }>();
   const isDark = colorScheme === 'dark';
 
   // Request permission on mount
@@ -282,69 +282,15 @@ export default function CameraScreen() {
       });
 
       console.log('[SAVE] Video saved successfully');
-router.push({
+
+      router.push({
         pathname: '/gym/exercise-select',
         params: {
-          videoPath: newPath,
-          timestamp: timestamp.toString(),
           autoDetect: params.autoDetect || 'true',
           exerciseName: params.exerciseName || '',
-        },
-      });
-router.push({
-        pathname: '/gym/exercise-select',
-        params: {
           videoPath: newPath,
           timestamp: timestamp.toString(),
-          autoDetect: params.autoDetect || 'true',
-          exerciseName: params.exerciseName || '',
         },
-      });
-router.push({
-        pathname: '/gym/exercise-select',
-        params: {
-          videoPath: newPath,
-          timestamp: timestamp.toString(),
-          autoDetect: params.autoDetect || 'true',
-          exerciseName: params.exerciseName || '',
-        },
-      });
-router.push({
-        pathname: '/gym/exercise-select',
-        params: {
-          videoPath: newPath,
-          timestamp: timestamp.toString(),
-          autoDetect: params.autoDetect || 'true',
-          exerciseName: params.exerciseName || '',
-        },
-      });
-router.push({
-        pathname: '/gym/exercise-select',
-        params: {
-          videoPath: newPath,
-          timestamp: timestamp.toString(),
-          autoDetect: params.autoDetect || 'true',
-          exerciseName: params.exerciseName || '',
-        },
-      });
-router.push({
-        pathname: '/gym/exercise-select',
-        params: {
-          videoPath: newPath,
-          timestamp: timestamp.toString(),
-          autoDetect: params.autoDetect || 'true',
-          exerciseName: params.exerciseName || '',
-        },
-      });
-router.push({
-        pathname: '/gym/exercise-select',
-        params: {
-          videoPath: newPath,
-          timestamp: timestamp.toString(),
-          autoDetect: params.autoDetect || 'true',
-          exerciseName: params.exerciseName || '',
-        },
-      });
       });
     } catch (error: any) {
       console.error('[SAVE] Error:', error);
