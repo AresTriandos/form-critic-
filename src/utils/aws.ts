@@ -14,8 +14,10 @@ const LAMBDA_ENDPOINT = 'https://hevgy4dagmgawsrafitpkjahbq0ydunt.lambda-url.us-
 /**
  * Upload video to Lambda for analysis
  * Sends full video to Gemini 2.0 for native video analysis
+ * @param videoUri - Path to video file
+ * @param exerciseName - Optional exercise name (if provided, uses manual mode; if undefined, uses auto-detect)
  */
-export async function uploadVideoAndAnalyze(videoUri: string): Promise<AnalysisResult> {
+export async function uploadVideoAndAnalyze(videoUri: string, exerciseName?: string): Promise<AnalysisResult> {
   try {
     console.log('[AWS] Starting video analysis:', videoUri);
 
@@ -28,10 +30,18 @@ export async function uploadVideoAndAnalyze(videoUri: string): Promise<AnalysisR
     console.log('[AWS] Video size:', base64Video.length, 'bytes');
 
     // Prepare payload
-    const payload = {
+    const payload: any = {
       video: base64Video,
       timestamp: new Date().toISOString(),
     };
+    
+    // Add exercise name if manual mode
+    if (exerciseName) {
+      payload.exerciseName = exerciseName;
+      console.log('[AWS] Using manual exercise mode:', exerciseName);
+    } else {
+      console.log('[AWS] Using auto-detect mode');
+    }
 
     console.log('[AWS] Sending to Lambda...');
 

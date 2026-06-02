@@ -3,6 +3,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 interface AnalysisPayload {
   video: string; // base64 encoded MP4
   timestamp: string;
+  exerciseName?: string; // Optional: pre-identified exercise name
+  exerciseInstructions?: string[]; // Optional: ExerciseDB instructions for context
+  targetMuscle?: string; // Optional: target muscle group
 }
 
 interface AnalysisResponse {
@@ -16,25 +19,48 @@ interface AnalysisResponse {
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
 
 /**
- * Analyze exercise form using Google Gemini 2.0 Vision API
- * Gemini natively supports video analysis
+ * Analyze exercise form using Google Gemini 2.5 Vision API
+ * Gemini natively supports video analysis (updated 2026-06-02)
+ * Optionally uses ExerciseDB context for improved analysis
  */
-async function analyzeVideo(videoBase64: string): Promise<Partial<AnalysisResponse>> {
+async function analyzeVideo(
+  videoBase64: string,
+  exerciseName?: string,
+  exerciseInstructions?: string[],
+  targetMuscle?: string
+): Promise<Partial<AnalysisResponse>> {
   try {
     console.log('Initializing Gemini model...');
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-    // Create the prompt
-    const prompt = `You are an expert fitness coach analyzing exercise form from a video.
+    // Create the prompt with optional exercise context
+    let prompt = `You are an expert fitness coach analyzing exercise form from a video.
 
 Analyze the exercise shown in this video and provide:
 
 1. Exercise Name: Identify the specific exercise being performed
 2. Form Score: Rate the form quality from 0-100 (100 = perfect form)
 3. Detailed Critique: Provide 2-3 sentences of specific feedback on what they're doing well and what needs improvement
-4. Key Cues: List 3-4 specific actionable improvements they should focus on
+4. Key Cues: List 3-4 specific actionable improvements they should focus on`;
 
-IMPORTANT: You must return a valid JSON response with this exact structure:
+    // Add exercise context if provided
+    if (exerciseName) {
+      prompt += `\n\nEXERCISE CONTEXT:\nThe user is performing: ${exerciseName}`;
+    }
+
+    if (targetMuscle) {
+      prompt += `\nTarget Muscle Group: ${targetMuscle}\nFocus your critique on how well they're engaging and moving this muscle group.`;
+    }
+
+    if (exerciseInstructions && exerciseInstructions.length > 0) {
+      prompt += `\n\nCORRECT FORM INSTRUCTIONS:\n`;
+      exerciseInstructions.forEach((instruction, index) => {
+        prompt += `${index + 1}. ${instruction}\n`;
+      });
+      prompt += `\nAnalyze their form against these instructions and provide specific feedback on whether they're following each step correctly.`;
+    }
+
+    prompt += `\n\nIMPORTANT: You must return a valid JSON response with this exact structure:
 {
   "exercise": "Exercise Name",
   "score": 75,
@@ -124,8 +150,13 @@ export async function handler(event: any): Promise<any> {
 
     console.log('Video size:', payload.video.length, 'bytes');
 
-    // Analyze video
-    const analysis = await analyzeVideo(payload.video);
+    // Analyze video with optional exercise context
+    const analysis = await analyzeVideo(
+      payload.video,
+      payload.exerciseName,
+      payload.exerciseInstructions,
+      payload.targetMuscle
+    );
 
     // Calculate processing time
     const processingTime = Date.now() - startTime;

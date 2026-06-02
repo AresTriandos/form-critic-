@@ -283,9 +283,9 @@ export default function CameraScreen() {
       console.log('[SAVE] Video saved successfully');
 
       router.push({
-        pathname: '/record/processing',
+        pathname: '/gym/exercise-select',
         params: {
-          videoUri: newPath,
+          videoPath: newPath,
           timestamp: timestamp.toString(),
         },
       });
