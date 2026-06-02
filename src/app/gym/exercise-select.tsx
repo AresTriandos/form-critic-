@@ -5,10 +5,14 @@ import { analyzeForm } from '@/services/analysis';
 
 export default function ExerciseSelect() {
   const router = useRouter();
-  const { videoPath } = useLocalSearchParams<{ videoPath: string }>();
+  const { videoPath, autoDetect: paramAutoDetect, exerciseName: paramExerciseName } = useLocalSearchParams<{ 
+    videoPath: string;
+    autoDetect?: string;
+    exerciseName?: string;
+  }>();
   
-  const [exerciseName, setExerciseName] = useState('');
-  const [autoDetect, setAutoDetect] = useState(true);
+  const [exerciseName, setExerciseName] = useState(paramExerciseName || '');
+  const [autoDetect, setAutoDetect] = useState(paramAutoDetect === 'false' ? false : true);
   const [isLoading, setIsLoading] = useState(false);
 
   if (!videoPath) {
@@ -48,18 +52,20 @@ export default function ExerciseSelect() {
       <View style={styles.content}>
         <Text style={styles.title}>What exercise did you just do?</Text>
         
-        {/* Auto-detect toggle */}
-        <TouchableOpacity 
-          style={[styles.toggleButton, autoDetect && styles.toggleActive]}
-          onPress={() => setAutoDetect(!autoDetect)}
-        >
-          <Text style={[styles.toggleText, autoDetect && styles.toggleTextActive]}>
-            {autoDetect ? '✓ Auto-detect' : 'Manual entry'}
-          </Text>
-        </TouchableOpacity>
+        {/* Auto-detect toggle - only show if exercise not pre-specified */}
+        {!paramExerciseName && (
+          <TouchableOpacity 
+            style={[styles.toggleButton, autoDetect && styles.toggleActive]}
+            onPress={() => setAutoDetect(!autoDetect)}
+          >
+            <Text style={[styles.toggleText, autoDetect && styles.toggleTextActive]}>
+              {autoDetect ? '✓ Auto-detect' : 'Manual entry'}
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* Manual exercise input */}
-        {!autoDetect && (
+        {(!autoDetect || paramExerciseName) && (
           <TextInput
             style={styles.input}
             placeholder="e.g., lat pulldown, squat, bench press"
@@ -70,7 +76,7 @@ export default function ExerciseSelect() {
           />
         )}
 
-        {autoDetect && (
+        {autoDetect && !paramExerciseName && (
           <Text style={styles.autoDetectNote}>
             AI will detect the exercise from your video
           </Text>
@@ -80,10 +86,10 @@ export default function ExerciseSelect() {
         <TouchableOpacity 
           style={[styles.button, isLoading && styles.buttonDisabled]}
           onPress={handleAnalyze}
-          disabled={isLoading || (!autoDetect && !exerciseName.trim())}
+          disabled={isLoading || ((!autoDetect || paramExerciseName) && !exerciseName.trim())}
         >
           <Text style={styles.buttonText}>
-            {isLoading ? 'Analyzing...' : 'Analyze Form'}
+            {isLoading ? 'Analyzing...' : paramExerciseName ? 'Confirm & Analyze' : 'Analyze Form'}
           </Text>
         </TouchableOpacity>
 

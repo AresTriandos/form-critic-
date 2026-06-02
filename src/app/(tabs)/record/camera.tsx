@@ -2,7 +2,7 @@ import { StyleSheet, View, TouchableOpacity, Text, useColorScheme, Alert, Linkin
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { useRef, useState, useEffect } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 
@@ -14,6 +14,7 @@ export default function CameraScreen() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingRef = useRef(false);
   const router = useRouter();
+  const params = useLocalSearchParams<{ autoDetect?: string; exerciseName?: string }>();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
 
@@ -281,13 +282,69 @@ export default function CameraScreen() {
       });
 
       console.log('[SAVE] Video saved successfully');
-
-      router.push({
+router.push({
         pathname: '/gym/exercise-select',
         params: {
           videoPath: newPath,
           timestamp: timestamp.toString(),
+          autoDetect: params.autoDetect || 'true',
+          exerciseName: params.exerciseName || '',
         },
+      });
+router.push({
+        pathname: '/gym/exercise-select',
+        params: {
+          videoPath: newPath,
+          timestamp: timestamp.toString(),
+          autoDetect: params.autoDetect || 'true',
+          exerciseName: params.exerciseName || '',
+        },
+      });
+router.push({
+        pathname: '/gym/exercise-select',
+        params: {
+          videoPath: newPath,
+          timestamp: timestamp.toString(),
+          autoDetect: params.autoDetect || 'true',
+          exerciseName: params.exerciseName || '',
+        },
+      });
+router.push({
+        pathname: '/gym/exercise-select',
+        params: {
+          videoPath: newPath,
+          timestamp: timestamp.toString(),
+          autoDetect: params.autoDetect || 'true',
+          exerciseName: params.exerciseName || '',
+        },
+      });
+router.push({
+        pathname: '/gym/exercise-select',
+        params: {
+          videoPath: newPath,
+          timestamp: timestamp.toString(),
+          autoDetect: params.autoDetect || 'true',
+          exerciseName: params.exerciseName || '',
+        },
+      });
+router.push({
+        pathname: '/gym/exercise-select',
+        params: {
+          videoPath: newPath,
+          timestamp: timestamp.toString(),
+          autoDetect: params.autoDetect || 'true',
+          exerciseName: params.exerciseName || '',
+        },
+      });
+router.push({
+        pathname: '/gym/exercise-select',
+        params: {
+          videoPath: newPath,
+          timestamp: timestamp.toString(),
+          autoDetect: params.autoDetect || 'true',
+          exerciseName: params.exerciseName || '',
+        },
+      });
       });
     } catch (error: any) {
       console.error('[SAVE] Error:', error);
