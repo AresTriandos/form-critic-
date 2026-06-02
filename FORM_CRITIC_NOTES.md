@@ -36,11 +36,11 @@ _Add friction observations and improvement ideas as they come up_
   - **Effort:** 1.5 hours
   - **Why it matters:** Users need time to get into position after hitting record
 
-- [ ] **TODO:** Record button doesn't show time feedback
-  - **Idea:** Record button shows countdown during delay, then displays elapsed time while recording
-  - **Effort:** 1 hour
-  - **Why it matters:** Users know exactly when recording starts and how long they've been recording
-  - **Total for all 3 features:** ~5 hours
+- [ ] **TODO:** Record button doesn't show elapsed time
+  - **Idea:** Record button displays elapsed time while recording (e.g., "0:32")
+  - **Effort:** 15 minutes (already mostly implemented)
+  - **Why it matters:** Users see exactly how long they've been recording
+  - **Total for all 3 features:** ~2 hours (30 min + 1.5 hr + 15 min)
 
 #### Analysis & Results Display
 - [x] **FIXED:** Exercise auto-detection unreliable (esp. from side/back angles)

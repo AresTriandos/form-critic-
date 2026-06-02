@@ -1,7 +1,7 @@
 # Form Critic - Recording UX Improvements
 
 **Priority:** HIGH (core recording experience)  
-**Effort:** 4-6 hours  
+**Effort:** 2-3 hours  
 **Status:** Ready to implement
 
 ---
@@ -12,14 +12,17 @@
 Add button to switch between front/back camera during preview.
 
 ### Implementation
-**File:** `src/app/(tabs)/record/index.tsx`
+**File:** `src/app/(tabs)/record/camera.tsx`
 
 ```tsx
 // Add to camera options
-const [facing, setFacing] = useState<'front' | 'back'>('front');
+const [facing, setFacing] = useState<'front' | 'back'>('back');
 
-// Add flip button in UI
-<TouchableOpacity onPress={() => setFacing(facing === 'front' ? 'back' : 'front')}>
+// Add flip button in UI (top-right corner)
+<TouchableOpacity 
+  style={styles.flipButton}
+  onPress={() => setFacing(facing === 'front' ? 'back' : 'front')}
+>
   <MaterialIcons name="flip-camera-android" size={32} color="white" />
 </TouchableOpacity>
 
@@ -31,7 +34,8 @@ const [facing, setFacing] = useState<'front' | 'back'>('front');
 - Position: Top-right of camera preview
 - Icon: Flip/rotate icon (Material Icons)
 - State: Persist across recording session
-- Default: Front (selfie view for posture)
+- Default: Back (for form tracking)
+- Effort: **30 minutes**
 
 ---
 
@@ -39,29 +43,34 @@ const [facing, setFacing] = useState<'front' | 'back'>('front');
 
 ### What
 Before recording starts, show countdown timer. User can position themselves.
+- Select 15 or 30 seconds
+- Countdown appears on screen
+- Actual recording starts when countdown reaches 0
 
 ### Implementation
-**File:** `src/app/(tabs)/record/index.tsx`
+**File:** `src/app/(tabs)/record/camera.tsx`
 
 ```tsx
-// States
 const [isCountingDown, setIsCountingDown] = useState(false);
 const [countdownSeconds, setCountdownSeconds] = useState(0);
 const [selectedDelay, setSelectedDelay] = useState(15); // or 30
 
 // When user presses "Start Recording"
-const startRecordingWithDelay = async () => {
+const handleStartRecordWithDelay = async () => {
+  // Show delay selector
+  // User taps 15 or 30
+  // Countdown begins
+  
   setIsCountingDown(true);
   setCountdownSeconds(selectedDelay);
   
-  // Countdown loop
   const interval = setInterval(() => {
     setCountdownSeconds(s => {
       if (s <= 1) {
         clearInterval(interval);
         setIsCountingDown(false);
-        // Actually start recording
-        startRecording();
+        // Start actual recording
+        handleStartRecord();
         return 0;
       }
       return s - 1;
@@ -69,109 +78,85 @@ const startRecordingWithDelay = async () => {
   }, 1000);
 };
 
-// Show delay selector before countdown starts
-if (!isCountingDown && !isRecording) {
-  return (
-    <View>
-      <TouchableOpacity onPress={() => setSelectedDelay(15)}>
-        <Text>15 sec</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => setSelectedDelay(30)}>
-        <Text>30 sec</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
+// Show countdown overlay if active
+{isCountingDown && (
+  <View style={styles.countdownOverlay}>
+    <Text style={styles.countdownText}>{countdownSeconds}</Text>
+  </View>
+)}
 ```
 
 ### Details
 - Options: 15 or 30 seconds (user selectable)
-- Once selected, countdown begins immediately
-- Cannot cancel once started (or add cancel button)
-- Sound cue on each second (optional: beep on last 3 seconds)
+- Countdown displays large on screen
+- User can see themselves positioning
+- Cannot cancel once started
+- Effort: **1.5 hours**
 
 ---
 
-## 3. Record Button Countdown Display
+## 3. Record Button Elapsed Time Display
 
 ### What
-Record button itself shows:
-1. Countdown timer during delay (e.g., "15...")
-2. Elapsed time while recording (e.g., "0:32")
+Record button shows elapsed time while recording (e.g., "0:32", "1:05")
+- Counts up from 0:00
+- Updates every second
+- Shows minutes:seconds format
+- Helps user know how long recording has been going
 
 ### Implementation
-**File:** `src/app/(tabs)/record/index.tsx`
+**File:** `src/app/(tabs)/record/camera.tsx`
+
+The timer is **already implemented**! Just update button text:
 
 ```tsx
-const [elapsedSeconds, setElapsedSeconds] = useState(0);
+// Timer already exists in state
+// Just display it in the button
 
-// During countdown
-<TouchableOpacity disabled style={styles.recordButton}>
-  <Text style={styles.buttonText}>
-    {isCountingDown ? `${countdownSeconds}...` : 'Start'}
-  </Text>
-</TouchableOpacity>
-
-// During recording
-useEffect(() => {
-  if (!isRecording) return;
-  
-  const interval = setInterval(() => {
-    setElapsedSeconds(s => s + 1);
-  }, 1000);
-  
-  return () => clearInterval(interval);
-}, [isRecording]);
-
-// Button shows elapsed time
 <TouchableOpacity 
-  onPress={stopRecording} 
-  style={[styles.recordButton, styles.recordingActive]}
+  style={[styles.recordButton, recordingRef.current && styles.recordingActive]}
+  onPress={recordingRef.current ? handleStopRecord : handleStartRecord}
 >
-  <Text style={styles.buttonText}>
-    {formatTime(elapsedSeconds)}
-  </Text>
+  {recordingRef.current ? (
+    <Text style={styles.recordButtonText}>
+      {String(Math.floor((recordingTime / 1000) / 60)).padStart(2, '0')}:
+      {String(Math.floor((recordingTime / 1000) % 60)).padStart(2, '0')}
+    </Text>
+  ) : (
+    <Ionicons name="radio-button-on" size={40} color="#ffffff" />
+  )}
 </TouchableOpacity>
-
-// Helper
-const formatTime = (seconds: number) => {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-};
 ```
 
 ### Styling
-- **Countdown:** Red background, large font, pulsing animation
-- **Recording:** Red background with white circle (active state)
-- **Elapsed:** White text, monospace font for clarity
+- White text on red background
+- Monospace font (numbers align properly)
+- Large enough to see from distance
+- Effort: **15 minutes** (already implemented, just update UI)
 
 ---
 
 ## Timeline
 
-| Step | Time | Notes |
-|------|------|-------|
-| 1. Camera flip button | 30 min | Simple state toggle |
-| 2. Delay timer logic | 1.5 hours | Countdown loop, state management |
-| 3. UI for delay selector | 1 hour | Radio buttons or segmented control |
-| 4. Record button display | 1 hour | Dynamic text, formatting |
-| 5. Styling & polish | 1.5 hours | Colors, animations, feedback |
-| **Total** | **5 hours** | Ready to deploy |
+| Feature | Time | Status |
+|---------|------|--------|
+| 1. Camera flip button | 30 min | Ready |
+| 2. Delayed start timer | 1.5 hours | Ready |
+| 3. Elapsed time display | 15 min | Ready (mostly done) |
+| **Total** | **2 hours** | Ready to build |
 
 ---
 
 ## Testing Checklist
 
-- [ ] Flip camera works in preview
+- [ ] Flip camera works smoothly
 - [ ] Countdown starts immediately after selection
-- [ ] Recording begins when timer reaches 0
-- [ ] Elapsed time displays correctly
-- [ ] Button text updates in real-time
-- [ ] Countdown can't be interrupted
-- [ ] Screen rotation doesn't break timer
-- [ ] Works on both iOS and Android
+- [ ] Recording begins when timer hits 0
+- [ ] Elapsed time updates correctly every second
+- [ ] Button text visible from arm's length
+- [ ] Can record the full 90 seconds
+- [ ] Works in both portrait and landscape
 
 ---
 
-**Ready to build?** Let's start with camera flip (easiest win).
+**Ready to implement!**
