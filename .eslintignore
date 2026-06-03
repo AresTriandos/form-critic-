@@ -1,0 +1,6 @@
+src/app/(tabs)/record/camera.tsx
+src/app/(tabs)/_layout.tsx
+src/app/(tabs)/record/_layout.tsx
+src/components/app-tabs.web.tsx
+src/components/exercise-detail-card.tsx
+src/components/exercise-search.tsx
