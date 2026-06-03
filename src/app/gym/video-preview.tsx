@@ -225,19 +225,9 @@ export default function VideoPreview() {
   };
 
   const handlePlayVideo = async () => {
-    if (!videoPath) return;
-    try {
-      console.log('[VideoPreview] Opening video:', videoPath);
-      const canOpen = await Linking.canOpenURL(`file://${videoPath}`);
-      if (canOpen) {
-        await Linking.openURL(`file://${videoPath}`);
-      } else {
-        Alert.alert('Cannot Open', 'Your device cannot open this video file');
-      }
-    } catch (error) {
-      console.error('[VideoPreview] Error opening video:', error);
-      Alert.alert('Error', 'Failed to open video player');
-    }
+    // Video playback via file:// URI doesn't work on iOS
+    // Just show a message that they can analyze without playing
+    Alert.alert('Video Ready', 'Tap "Submit to Analyze" to analyze your form', [{ text: 'OK' }]);
   };
 
   return (
@@ -273,12 +263,12 @@ export default function VideoPreview() {
               <Text style={[styles.infoLabel, { color: '#aaa', marginTop: 12 }]}>Video Ready</Text>
             </View>
           )}
-          <TouchableOpacity onPress={handlePlayVideo} style={styles.playOverlay}>
+          <View style={styles.playOverlay}>
             <View style={styles.playButton}>
               <Ionicons name="play" size={32} color="#000" />
             </View>
-            <Text style={[styles.infoLabel, { color: '#fff', marginTop: 16 }]}>Tap to play video</Text>
-          </TouchableOpacity>
+            <Text style={[styles.infoLabel, { color: '#fff', marginTop: 16 }]}>Ready to analyze</Text>
+          </View>
         </View>
 
         {/* Exercise Info */}
