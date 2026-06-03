@@ -284,7 +284,7 @@ export default function CameraScreen() {
       console.log('[SAVE] Video saved successfully');
 
       router.push({
-        pathname: '/gym/exercise-select',
+        pathname: '/gym/video-preview',
         params: {
           autoDetect: params.autoDetect || 'true',
           exerciseName: params.exerciseName || '',
