@@ -11,7 +11,7 @@ export default function ExerciseSelect() {
     exerciseName?: string;
   }>();
   
-  const [exerciseName, setExerciseName] = useState(paramExerciseName || '');
+  const [exerciseName, setExerciseName] = useState((typeof paramExerciseName === 'string' ? paramExerciseName : '') || '');
   const [autoDetect, setAutoDetect] = useState(paramAutoDetect === 'false' ? false : true);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -29,7 +29,7 @@ export default function ExerciseSelect() {
       const result = await analyzeForm(videoPath, autoDetect ? undefined : exerciseName);
       
       router.push({
-        pathname: '/gym/results',
+        pathname: '/gym/results' as any,
         params: {
           videoPath,
           exerciseName: autoDetect ? undefined : exerciseName,

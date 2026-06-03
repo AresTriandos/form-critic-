@@ -222,7 +222,7 @@ export default function CameraScreen() {
       const newPath = appDir + `workout_${timestamp}.mp4`;
       await FileSystemLegacy.copyAsync({ from: videoPath, to: newPath });
       router.push({
-        pathname: '/gym/video-preview',
+        pathname: '/gym/video-preview' as any,
         params: {
           autoDetect: params.autoDetect || 'true',
           exerciseName: params.exerciseName || '',

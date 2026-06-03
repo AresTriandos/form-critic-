@@ -166,7 +166,7 @@ export default function VideoPreview() {
       );
       
       router.push({
-        pathname: '/gym/results',
+        pathname: '/gym/results' as any,
         params: {
           videoPath,
           exerciseName: autoDetect ? undefined : paramExerciseName,
