@@ -31,21 +31,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access the camera.",
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access the microphone.",
-          "recordAudioAndroid": true
-        }
-      ],
-      [
-        "expo-av",
-        {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access the microphone."
-        }
-      ]
+      "expo-router"
     ],
     "extra": {
       "eas": {
