@@ -8,12 +8,11 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true,
-      "ios": {
-        "buildCache": false,
-        "image": "latest"
-      }
+      "autoIncrement": true
     }
+  },
+  "cache": {
+    "disabled": true
   },
   "submit": {
 
