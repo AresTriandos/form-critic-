@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, SafeAreaView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Video, ResizeMode } from 'expo-av';
+
 import { Ionicons } from '@expo/vector-icons';
 import { analyzeForm } from '@/services/analysis';
 
@@ -23,8 +23,6 @@ export default function VideoPreview() {
   }>();
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const videoRef = React.useRef(null);
 
   const styles = StyleSheet.create({
     container: {
@@ -192,22 +190,13 @@ export default function VideoPreview() {
       </View>
       
       <View style={styles.content}>
-        {/* Video Player */}
+        {/* Video Ready Indicator */}
         <View style={styles.videoContainer}>
-          <Video
-            ref={videoRef}
-            source={{ uri: videoPath }}
-            style={styles.video}
-            resizeMode={ResizeMode.COVER}
-            isLooping={false}
-            shouldPlay={false}
-            useNativeControls={true}
-            onPlaybackStatusUpdate={(status: any) => {
-              if (status.isLoaded) {
-                setIsPlaying(status.isPlaying);
-              }
-            }}
-          />
+          <View style={[styles.playOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.6)' }]}>
+            <Ionicons name="checkmark-circle" size={80} color="#4ade80" />
+            <Text style={[styles.infoValue, { marginTop: 16, color: '#fff', textAlign: 'center' }]}>Video Ready</Text>
+            <Text style={[styles.infoLabel, { color: '#aaa', textAlign: 'center', marginTop: 8 }]}>Ready for analysis</Text>
+          </View>
         </View>
 
         {/* Exercise Info */}
