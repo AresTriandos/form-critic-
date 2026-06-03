@@ -21,6 +21,15 @@ export async function uploadVideoAndAnalyze(videoUri: string, exerciseName?: str
   try {
     console.log('[AWS] Starting video analysis:', videoUri);
 
+    // Verify file exists
+    console.log('[AWS] Checking if video file exists...');
+    const fileInfo = await FileSystem.getInfoAsync(videoUri);
+    console.log('[AWS] File info:', fileInfo);
+    
+    if (!fileInfo.exists) {
+      throw new Error(`Video file not found at: ${videoUri}`);
+    }
+
     // Read video as base64
     console.log('[AWS] Reading video file...');
     const base64Video = await FileSystem.readAsStringAsync(videoUri, {
@@ -59,7 +68,7 @@ export async function uploadVideoAndAnalyze(videoUri: string, exerciseName?: str
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[AWS] Lambda error response:', errorText);
+      console.error('[AWS] Lambda error response:', response.status, errorText);
       throw new Error(`Lambda returned status ${response.status}: ${errorText}`);
     }
 
@@ -78,12 +87,14 @@ export async function uploadVideoAndAnalyze(videoUri: string, exerciseName?: str
       keyCues: Array.isArray(result.keyCues) ? result.keyCues : [],
       timestamp: new Date().toISOString(),
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('[AWS] Analysis error:', error);
+    const msg = error?.message || String(error) || 'Unknown error';
+    console.error('[AWS] Error details:', msg);
     throw new Error(
       error instanceof Error
-        ? error.message
-        : 'Failed to analyze video. Please check your connection and try again.'
+        ? `${error.message}`
+        : `Failed to analyze video: ${msg}`
     );
   }
 }

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, SafeAreaView, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, SafeAreaView, Image, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import { Ionicons } from '@expo/vector-icons';
 import { analyzeForm } from '@/services/analysis';
 
@@ -23,6 +23,30 @@ export default function VideoPreview() {
   }>();
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [thumbnailUri, setThumbnailUri] = useState<string | null>(null);
+  const [thumbnailLoading, setThumbnailLoading] = useState(true);
+
+  useEffect(() => {
+    const generateThumbnail = async () => {
+      if (!videoPath) return;
+      try {
+        console.log('[VideoPreview] Generating thumbnail from:', videoPath);
+        const { uri } = await VideoThumbnails.getThumbnailAsync(videoPath, {
+          time: 1000, // 1 second into video
+        });
+        console.log('[VideoPreview] Thumbnail generated:', uri);
+        setThumbnailUri(uri);
+      } catch (e) {
+        console.error('[VideoPreview] Thumbnail error:', e);
+        // Fallback: show placeholder
+        setThumbnailUri(null);
+      } finally {
+        setThumbnailLoading(false);
+      }
+    };
+
+    generateThumbnail();
+  }, [videoPath]);
 
   const styles = StyleSheet.create({
     container: {
@@ -155,14 +179,23 @@ export default function VideoPreview() {
   }
 
   const handleSubmitAnalysis = async () => {
+    if (!videoPath) {
+      Alert.alert('Error', 'Video path not found');
+      return;
+    }
+
     setIsAnalyzing(true);
+    console.log('[VideoPreview] Starting analysis for:', videoPath);
     try {
       const autoDetect = paramAutoDetect === 'false' ? false : true;
+      console.log('[VideoPreview] Analysis mode:', autoDetect ? 'auto-detect' : `manual (${paramExerciseName})`);
+      
       const result = await analyzeForm(
         videoPath, 
         autoDetect ? undefined : paramExerciseName
       );
       
+      console.log('[VideoPreview] Analysis complete, navigating to results');
       router.push({
         pathname: '/gym/results' as any,
         params: {
@@ -171,9 +204,10 @@ export default function VideoPreview() {
           analysisResult: JSON.stringify(result),
         },
       });
-    } catch (error) {
-      console.error('Analysis failed:', error);
-      alert('Failed to analyze form. Please try again.');
+    } catch (error: any) {
+      console.error('[VideoPreview] Analysis error:', error);
+      const errorMsg = error?.message || JSON.stringify(error) || 'Unknown error';
+      Alert.alert('Analysis Failed', `Error: ${errorMsg}`);
     } finally {
       setIsAnalyzing(false);
     }
@@ -192,17 +226,28 @@ export default function VideoPreview() {
       <View style={styles.content}>
         {/* Video Thumbnail */}
         <View style={styles.videoContainer}>
-          <Image 
-            source={{ uri: `file://${videoPath}` }} 
-            style={styles.video}
-            resizeMode="cover"
-            onError={(e) => console.log('[VideoPreview] Error loading thumbnail:', e)}
-          />
+          {thumbnailLoading ? (
+            <View style={[styles.video, { justifyContent: 'center', alignItems: 'center' }]}>
+              <ActivityIndicator size="large" color="#0a7ea4" />
+            </View>
+          ) : thumbnailUri ? (
+            <Image 
+              source={{ uri: thumbnailUri }} 
+              style={styles.video}
+              resizeMode="cover"
+              onError={(e) => console.log('[VideoPreview] Image load error:', e)}
+            />
+          ) : (
+            <View style={[styles.video, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a1a' }]}>
+              <Ionicons name="videocam" size={60} color="#666" />
+              <Text style={[styles.infoLabel, { color: '#aaa', marginTop: 12 }]}>Video Ready</Text>
+            </View>
+          )}
           <View style={styles.playOverlay}>
             <View style={styles.playButton}>
               <Ionicons name="play" size={32} color="#000" />
             </View>
-            <Text style={[styles.infoLabel, { color: '#fff', marginTop: 16 }]}>Tap to analyze</Text>
+            <Text style={[styles.infoLabel, { color: '#fff', marginTop: 16 }]}>Ready to Analyze</Text>
           </View>
         </View>
 
