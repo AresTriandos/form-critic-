@@ -305,12 +305,12 @@ export default function CameraScreen() {
           <View style={{ width: 44 }} />
         </View>
 
-        {/* Countdown */}
-        {countdownActive && (
+        {/* Countdown - only show if counting down, NOT recording */}
+        {countdownActive && !isRecording && (
           <View style={styles.countdownOverlay}>
             <View style={{ alignItems: 'center' }}>
               <Text style={styles.countdownNumber}>{countdownSeconds}</Text>
-              <Text style={styles.countdownLabel}>{countdownSeconds === 0 ? 'Recording...' : 'Get ready!'}</Text>
+              <Text style={styles.countdownLabel}>{countdownSeconds === 0 ? 'Starting...' : 'Get ready!'}</Text>
             </View>
           </View>
         )}

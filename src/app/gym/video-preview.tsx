@@ -124,6 +124,7 @@ export default function VideoPreview() {
       width: '100%',
       paddingHorizontal: 20,
       gap: 12,
+      flexDirection: 'column',
     },
     submitButton: {
       backgroundColor: '#EF4444',
@@ -150,6 +151,8 @@ export default function VideoPreview() {
       paddingVertical: 14,
       borderRadius: 10,
       alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
       borderWidth: 1,
       borderColor: isDark ? '#555' : '#ddd',
     },
@@ -289,6 +292,16 @@ export default function VideoPreview() {
         {/* Buttons */}
         <View style={styles.buttonGroup}>
           <TouchableOpacity
+            style={styles.retakeButton}
+            onPress={handleRetake}
+            disabled={isAnalyzing}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="chevron-back" size={20} color={isDark ? '#fff' : '#000'} />
+            <Text style={[styles.retakeButtonText, { marginLeft: 8 }]}>Back to Record</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.submitButton, isAnalyzing && styles.submitButtonDisabled]}
             onPress={handleSubmitAnalysis}
             disabled={isAnalyzing}
@@ -297,15 +310,6 @@ export default function VideoPreview() {
             <Text style={styles.submitButtonText}>
               {isAnalyzing ? 'Analyzing...' : 'Submit to Analyze'}
             </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.retakeButton}
-            onPress={handleRetake}
-            disabled={isAnalyzing}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.retakeButtonText}>Retake Video</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
