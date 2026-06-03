@@ -39,6 +39,12 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to access the microphone.",
           "recordAudioAndroid": true
         }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access the microphone."
+        }
       ]
     ],
     "extra": {
