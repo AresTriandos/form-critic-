@@ -1,136 +1,133 @@
-# Form Critic - Friction & Ideas
+# Form Critic - Development Notes
 
-**Purpose:** Capture friction points, UX issues, and improvement ideas. Not fixes yet — just observations and ideas for future optimization.
-
----
-
-## Quick Notes Section
-_Add friction observations and improvement ideas as they come up_
-
-### Current Areas
-
-#### Recording & Video Capture
-- [x] **FIXED:** Exercise identification accuracy improved
-  - **Solution:** Added exercise selection BEFORE recording (manual + auto-detect)
-  - **Flow:** Select exercise mode → Record → Confirm exercise → Analyze
-  - **Why it matters:** User specifies exercise upfront, Lambda has context from the start
-  - **Status:** ✅ LIVE - Commit 88037df
-  - **Implementation:**
-    - Record screen now shows "Auto-Detect" vs "Specify Exercise" toggle
-    - If manual: User types exercise name before filming
-    - Exercise-select screen pre-fills and shows "Confirm & Analyze"
-    - If auto-detect: Exercise-select shows toggle (unchanged)
-
-- [x] **FIXED:** User didn't know what they were analyzing before recording
-  - **Solution:** Exercise selection moved to BEFORE recording
-  - **Why it matters:** Clear intent, reduces confusion, improves accuracy
-  - **Status:** ✅ LIVE - Same commit as above
-
-- [ ] **TODO:** No way to switch between front/back camera
-  - **Idea:** Add camera flip button (top-right corner of viewfinder)
-  - **Effort:** 30 minutes
-  - **Why it matters:** Users need both views (front for posture, back for form tracking)
-
-- [ ] **TODO:** No delayed start timer before recording begins
-  - **Idea:** Add 15-30 second countdown option before recording starts
-  - **Effort:** 1.5 hours
-  - **Why it matters:** Users need time to get into position after hitting record
-
-- [ ] **TODO:** Record button doesn't show elapsed time
-  - **Idea:** Record button displays elapsed time while recording (e.g., "0:32")
-  - **Effort:** 15 minutes (already mostly implemented)
-  - **Why it matters:** Users see exactly how long they've been recording
-  - **Total for all 3 features:** ~2 hours (30 min + 1.5 hr + 15 min)
-
-#### Analysis & Results Display
-- [x] **FIXED:** Exercise auto-detection unreliable (esp. from side/back angles)
-  - **Solution:** User can now specify exercise name OR auto-detect
-  - **Workflow:** Record → Select exercise (manual/auto) → Gemini analyzes with context
-  - **Status:** ✅ LIVE - Full prompt context passed to Lambda
-
-#### Exercise Database Integration
-- [ ] Issue: 
-- [ ] Idea:
-- [ ] Why it matters:
-
-#### Performance & Loading
-- [ ] Issue: 
-- [ ] Idea:
-- [ ] Why it matters:
-
-#### UI/UX Flow
-- [ ] Issue: 
-- [ ] Idea:
-- [ ] Why it matters:
-
-#### Mobile Experience
-- [ ] Issue: 
-- [ ] Idea:
-- [ ] Why it matters:
+**Last Updated:** 2026-06-03 13:35 GMT+1  
+**Current Phase:** Feature Implementation Complete - Testing Phase
 
 ---
 
-## Feature Ideas
-_New features or capabilities that could add value_
+## Latest Updates (2026-06-03)
 
-- Multi-angle recording (front + side for complete form analysis)
-- Video playback with slow-motion (0.5x - 1.5x speed)
-- Form comparison (before/after recordings)
-- Exercise progression tracking over time
-- Share results with coaches/trainers
+### ✅ COMPLETE: All 3 Recording Features Implemented
+
+**1. Video Preview Screen** (Commit: 864f913)
+- New screen between recording and analysis
+- User watches video with full playback controls
+- Shows exercise name or "Auto-Detect" mode
+- "Submit to Analyze" button sends directly to analysis
+- "Retake Video" button goes back to re-record
+- Removed intermediate confirmation page
+
+**2. Camera Flip Button** (Commit: 3412d97)
+- Top-right corner toggle button
+- Switch between front and back cameras
+- Shows current facing (Front/Back)
+- Disabled while recording or countdown active
+- Icon: `camera-reverse-outline`
+
+**3. Delayed Start Timer** (Commit: 3412d97)
+- Tap record button shows delay options modal
+- Choose: 5 seconds, 10 seconds, 15 seconds, or record now
+- Large countdown display (120px font) during countdown
+- Auto-starts recording when countdown finishes
+- Cancel button to dismiss options
+
+**4. Elapsed Time Display** (Already working)
+- Shows MM:SS format in red text during recording
+- Updates every 100ms
+- Displays "Recording" label below timer
 
 ---
 
-## User Feedback Patterns
-_Things users might struggle with or ask for_
+## Deployment Status
 
-- Camera angle confusion (which direction to record from)
-- Video quality issues (motion blur, poor lighting)
-- Long processing time expectations
-- Want immediate feedback during recording
-
----
-
-## Technical Debt
-_Known workarounds or limitations to address later_
-
-- Lambda timeout increased to 90 seconds (was 60) - supports longer videos
-- Exercise input is text-based (could integrate ExerciseDB dropdown for accuracy)
-- No offline recording support yet
-- Video compression could reduce upload size/time
+- **GitHub:** ✅ Pushed (commit 3412d97)
+- **CI/CD:** In progress - GitHub Actions will:
+  1. Build for iOS (macOS)
+  2. Submit to TestFlight
+  3. Notify via Telegram when ready
+- **ETA:** 5-10 minutes
 
 ---
 
-**Last Updated:** 2026-06-02 21:30 GMT+1  
-**Status:** Exercise identification FIXED, recording improvements ready for implementation
+## Flow Diagram
 
-## Recent Fixes
+```
+Select Exercise (manual/auto-detect)
+  ↓
+Record (with camera flip button)
+  ↓
+[Optional: 5/10/15 sec countdown]
+  ↓
+Recording (with elapsed time MM:SS)
+  ↓
+Video Preview (watch + submit/retake)
+  ↓
+Analysis (Gemini processes with context)
+  ↓
+Results (score + feedback + cues)
+```
 
-### Exercise Selection Moved to BEFORE Recording (COMPLETE - 2026-06-02)
-- **Issue:** User didn't know what they were analyzing before recording
-- **Previous Flow:** Record → Select Exercise → Analyze → Results
-- **New Flow:** Select Exercise → Record → Confirm → Analyze → Results
-- **Solution:** 
-  1. Record screen now shows toggle: "Auto-Detect" vs "Specify Exercise"
-  2. If manual: User types exercise name BEFORE filming
-  3. Camera screen receives exercise info as parameter
-  4. Exercise-select screen pre-fills exercise (confirmation only)
-- **Implementation:**
-  - Updated `src/app/(tabs)/record/index.tsx` - added exercise mode selection UI
-  - Updated `src/app/(tabs)/record/camera.tsx` - passes exercise params to next screen
-  - Updated `src/app/gym/exercise-select.tsx` - pre-fills exercise, shows "Confirm & Analyze"
-- **Benefits:**
-  - Clear intent before recording
-  - Reduces confusion
-  - Better user mental model
-  - Exercise context available from the start
-- **Status:** ✅ LIVE (Commit 88037df)
-- **Testing:** Ready to record with new flow
+---
 
-### Exercise Identification Accuracy (SUPPORTING FIX)
-- **Related to above:** Manual exercise specification fixes lat pulldown misidentification
-- **Gemini now has exercise context** from user input before analysis
-- **Both modes work:**
-  - Manual: User specifies → Gemini analyzes with context
-  - Auto-Detect: Gemini detects from video (original behavior)
-- **Status:** ✅ LIVE
+## UI/UX Details
+
+### Camera Screen Features
+- **Header:** Camera flip button + facing label + spacer (for balance)
+- **Countdown:** Large 120px number + "Get ready!" message
+- **Delay Options:** Modal with 5 buttons (5s, 10s, 15s, Now, Cancel)
+- **Timer:** MM:SS in red, updating in real-time
+- **Controls:** Disabled during countdown to prevent conflicts
+
+### Video Preview Screen Features
+- Native video player with full controls
+- Exercise info display
+- "Submit to Analyze" button (primary action)
+- "Retake Video" button (secondary)
+- Dark theme support
+
+---
+
+## Testing Checklist
+
+- [ ] Camera flip works (front/back toggle)
+- [ ] Delay options modal shows on record tap
+- [ ] Countdown displays and auto-starts recording
+- [ ] Elapsed time displays MM:SS during recording
+- [ ] Video plays back with controls in preview
+- [ ] Submit to Analyze sends to Lambda
+- [ ] Analysis returns form score + feedback
+- [ ] Results display correctly
+
+---
+
+## Known Issues / Future Improvements
+
+- Routing types don't include `/gym/video-preview` in strict mode (TypeScript warning, no functional impact)
+- Video quality locked to 720p (can upgrade to 1080p later)
+- No slow-motion in preview (can add 0.5x-1.5x speed controls later)
+- Exercise auto-detect mode still available (manual mode for accuracy)
+
+---
+
+## Technical Details
+
+### New Files
+- `src/app/gym/video-preview.tsx` — Video player + preview UI
+
+### Modified Files
+- `src/app/(tabs)/record/camera.tsx` — Added flip button, countdown timer, delay options
+- Package: Added `expo-av` for video playback
+
+### Dependencies Added
+- `expo-av` — Native video player
+
+---
+
+## Current State Summary
+
+✅ **Features:** All 3 requested features implemented + video preview
+✅ **Code:** Committed and pushed to GitHub
+✅ **Build:** In progress (check Telegram for status)
+✅ **Testing:** Ready to test on iOS
+
+Next: Monitor TestFlight build, test on real device, gather feedback.

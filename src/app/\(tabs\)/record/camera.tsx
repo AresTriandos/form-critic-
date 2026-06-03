@@ -69,16 +69,6 @@ export default function CameraScreen() {
     camera: {
       flex: 1,
     },
-    overlay: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      backgroundColor: 'rgba(0,0,0,0.6)',
-      paddingBottom: 24,
-      paddingHorizontal: 20,
-      paddingTop: 20,
-    },
     header: {
       position: 'absolute',
       top: 0,
@@ -99,10 +89,15 @@ export default function CameraScreen() {
       justifyContent: 'center',
       alignItems: 'center',
     },
-    flipButtonText: {
-      color: '#ffffff',
-      fontSize: 12,
-      fontWeight: '600',
+    overlay: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      paddingBottom: 24,
+      paddingHorizontal: 20,
+      paddingTop: 20,
     },
     controls: {
       flexDirection: 'row',
