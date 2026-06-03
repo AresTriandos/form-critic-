@@ -52,9 +52,11 @@ export async function uploadVideoAndAnalyze(videoUri: string, exerciseName?: str
       console.log('[AWS] Using auto-detect mode');
     }
 
-    console.log('[AWS] Sending to Lambda...');
+    console.log('[AWS] Sending to Lambda at:', LAMBDA_ENDPOINT);
+    console.log('[AWS] Payload size:', JSON.stringify(payload).length, 'chars');
 
     // Call Lambda function
+    console.log('[AWS] Fetching...');
     const response = await fetch(LAMBDA_ENDPOINT, {
       method: 'POST',
       headers: {
@@ -65,6 +67,7 @@ export async function uploadVideoAndAnalyze(videoUri: string, exerciseName?: str
     } as any);
 
     console.log('[AWS] Lambda response status:', response.status);
+    console.log('[AWS] Response headers:', response.headers);
 
     if (!response.ok) {
       const errorText = await response.text();

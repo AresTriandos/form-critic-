@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, SafeAreaView, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, SafeAreaView, Image, ActivityIndicator, Alert, Linking, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,9 +58,12 @@ export default function VideoPreview() {
       paddingVertical: 16,
       borderBottomColor: isDark ? '#333' : '#e5e5e5',
       borderBottomWidth: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
     },
     headerTitle: {
-      fontSize: 24,
+      fontSize: 20,
       fontWeight: '600',
       color: isDark ? '#ffffff' : '#000000',
     },
@@ -68,8 +71,6 @@ export default function VideoPreview() {
       flex: 1,
       paddingHorizontal: 20,
       paddingVertical: 20,
-      justifyContent: 'center',
-      alignItems: 'center',
     },
     videoContainer: {
       width: '100%',
@@ -185,17 +186,20 @@ export default function VideoPreview() {
     }
 
     setIsAnalyzing(true);
-    console.log('[VideoPreview] Starting analysis for:', videoPath);
+    console.log('[VideoPreview] ===== ANALYSIS START =====');
+    console.log('[VideoPreview] Video path:', videoPath);
     try {
       const autoDetect = paramAutoDetect === 'false' ? false : true;
-      console.log('[VideoPreview] Analysis mode:', autoDetect ? 'auto-detect' : `manual (${paramExerciseName})`);
+      console.log('[VideoPreview] Exercise:', autoDetect ? 'auto-detect' : paramExerciseName);
+      console.log('[VideoPreview] Calling analyzeForm...');
       
       const result = await analyzeForm(
         videoPath, 
         autoDetect ? undefined : paramExerciseName
       );
       
-      console.log('[VideoPreview] Analysis complete, navigating to results');
+      console.log('[VideoPreview] Analysis result:', result);
+      console.log('[VideoPreview] Navigation to /gym/results...');
       router.push({
         pathname: '/gym/results' as any,
         params: {
@@ -205,9 +209,12 @@ export default function VideoPreview() {
         },
       });
     } catch (error: any) {
-      console.error('[VideoPreview] Analysis error:', error);
+      console.error('[VideoPreview] ===== ANALYSIS ERROR =====');
+      console.error('[VideoPreview] Error object:', error);
+      console.error('[VideoPreview] Error message:', error?.message);
+      console.error('[VideoPreview] Error stack:', error?.stack);
       const errorMsg = error?.message || JSON.stringify(error) || 'Unknown error';
-      Alert.alert('Analysis Failed', `Error: ${errorMsg}`);
+      Alert.alert('Analysis Failed', `${errorMsg}\n\nCheck console logs for details.`);
     } finally {
       setIsAnalyzing(false);
     }
@@ -217,13 +224,36 @@ export default function VideoPreview() {
     router.back();
   };
 
+  const handlePlayVideo = async () => {
+    if (!videoPath) return;
+    try {
+      console.log('[VideoPreview] Opening video:', videoPath);
+      const canOpen = await Linking.canOpenURL(`file://${videoPath}`);
+      if (canOpen) {
+        await Linking.openURL(`file://${videoPath}`);
+      } else {
+        Alert.alert('Cannot Open', 'Your device cannot open this video file');
+      }
+    } catch (error) {
+      console.error('[VideoPreview] Error opening video:', error);
+      Alert.alert('Error', 'Failed to open video player');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={handleRetake} style={{ marginRight: 'auto' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="chevron-back" size={24} color={isDark ? '#fff' : '#000'} />
+            <Text style={[styles.headerTitle, { marginLeft: 8, fontSize: 18 }]}>Back</Text>
+          </View>
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Review Video</Text>
+        <View style={{ width: 40 }} />
       </View>
       
-      <View style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Video Thumbnail */}
         <View style={styles.videoContainer}>
           {thumbnailLoading ? (
@@ -243,12 +273,12 @@ export default function VideoPreview() {
               <Text style={[styles.infoLabel, { color: '#aaa', marginTop: 12 }]}>Video Ready</Text>
             </View>
           )}
-          <View style={styles.playOverlay}>
+          <TouchableOpacity onPress={handlePlayVideo} style={styles.playOverlay}>
             <View style={styles.playButton}>
               <Ionicons name="play" size={32} color="#000" />
             </View>
-            <Text style={[styles.infoLabel, { color: '#fff', marginTop: 16 }]}>Ready to Analyze</Text>
-          </View>
+            <Text style={[styles.infoLabel, { color: '#fff', marginTop: 16 }]}>Tap to play video</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Exercise Info */}
@@ -288,7 +318,7 @@ export default function VideoPreview() {
             <Text style={styles.retakeButtonText}>Retake Video</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

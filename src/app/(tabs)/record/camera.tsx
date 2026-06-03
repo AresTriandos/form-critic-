@@ -265,7 +265,7 @@ export default function CameraScreen() {
       <CameraView ref={cameraRef} style={styles.camera} facing={facing} mode="video" videoQuality="720p">
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.flipButton} onPress={() => setFacing(facing === 'back' ? 'front' : 'back')} disabled={isRecording || countdownActive} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.flipButton} onPress={() => setFacing(facing === 'back' ? 'front' : 'back')} disabled={false} activeOpacity={0.8}>
             <Ionicons name="camera-reverse-outline" size={20} color="#ffffff" />
           </TouchableOpacity>
           <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '600' }}>{facing === 'back' ? 'Back' : 'Front'}</Text>
@@ -309,7 +309,7 @@ export default function CameraScreen() {
         {/* Controls */}
         <View style={styles.overlay}>
           <View style={styles.controls}>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()} disabled={isRecording || countdownActive} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()} disabled={false} activeOpacity={0.85}>
               <Ionicons name="chevron-back" size={24} color="#ffffff" />
               <Text style={styles.cancelText}>Back</Text>
             </TouchableOpacity>
