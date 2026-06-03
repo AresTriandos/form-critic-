@@ -1,7 +1,7 @@
 import { StyleSheet, View, TouchableOpacity, Text, useColorScheme, Alert, Linking } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
@@ -22,6 +22,84 @@ export default function CameraScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const params = useLocalSearchParams<{ autoDetect?: string; exerciseName?: string }>();
   const isDark = colorScheme === 'dark';
+
+  // Define handlers BEFORE effects that use them
+  const handleStartRecord = useCallback(async () => {
+    try {
+      if (!cameraRef.current) {
+        console.error('Camera ref is null');
+        Alert.alert('Error', 'Camera not initialized');
+        return;
+      }
+
+      console.log('[RECORD] Starting video recording...');
+      recordingRef.current = true;
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      const video = await cameraRef.current.recordAsync();
+      
+      if (!video) {
+        console.error('[RECORD] No video object returned');
+        throw new Error('recordAsync returned null');
+      }
+
+      if (!video.uri) {
+        console.error('[RECORD] Video object has no URI');
+        throw new Error('recordAsync returned video with no URI');
+      }
+
+      console.log('[RECORD] Recording stopped successfully');
+      recordingRef.current = false;
+      setIsRecording(false);
+      await saveVideoLocally(video.uri);
+    } catch (error: any) {
+      console.error('[RECORD] Recording error:', error);
+      recordingRef.current = false;
+      setIsRecording(false);
+      Alert.alert('Recording Error', error?.message || 'Failed to record video');
+    }
+  }, []);
+
+  const saveVideoLocally = useCallback(async (videoPath: string) => {
+    try {
+      console.log('[SAVE] Saving video from:', videoPath);
+      
+      const appDir = FileSystemLegacy.documentDirectory + 'FormCritic/';
+      console.log('[SAVE] Target directory:', appDir);
+      
+      const dirInfo = await FileSystemLegacy.getInfoAsync(appDir);
+      if (!dirInfo.exists) {
+        console.log('[SAVE] Creating directory...');
+        await FileSystemLegacy.makeDirectoryAsync(appDir, { intermediates: true });
+      }
+
+      const timestamp = Date.now();
+      const filename = `workout_${timestamp}.mp4`;
+      const newPath = appDir + filename;
+
+      console.log('[SAVE] Copying to:', newPath);
+      await FileSystemLegacy.copyAsync({
+        from: videoPath,
+        to: newPath,
+      });
+
+      console.log('[SAVE] Video saved successfully');
+
+      router.push({
+        pathname: '/gym/video-preview' as any,
+        params: {
+          autoDetect: params.autoDetect || 'true',
+          exerciseName: params.exerciseName || '',
+          videoPath: newPath,
+          timestamp: timestamp.toString(),
+        },
+      });
+    } catch (error: any) {
+      console.error('[SAVE] Error:', error);
+      Alert.alert('Error', 'Failed to save video: ' + (error?.message || 'Unknown error'));
+    }
+  }, [params, router]);
 
   // Request permission on mount
   useEffect(() => {
@@ -44,22 +122,28 @@ export default function CameraScreen() {
     };
   }, []);
 
-  // Countdown timer
+  // Countdown timer - trigger recording when countdown finishes
   useEffect(() => {
-    if (countdownActive && countdownSeconds > 0) {
-      countdownRef.current = setTimeout(() => {
-        setCountdownSeconds((prev) => prev - 1);
-      }, 1000);
-    } else if (countdownActive && countdownSeconds === 0) {
-      // Countdown finished, start recording
+    if (!countdownActive || countdownSeconds > 0) {
+      if (countdownActive && countdownSeconds > 0) {
+        countdownRef.current = setTimeout(() => {
+          setCountdownSeconds((prev) => prev - 1);
+        }, 1000);
+      }
+      return () => {
+        if (countdownRef.current) clearTimeout(countdownRef.current);
+      };
+    }
+  }, [countdownActive, countdownSeconds]);
+
+  // Separate effect for countdown completion
+  useEffect(() => {
+    if (countdownActive && countdownSeconds === 0) {
       setCountdownActive(false);
       setShowDelayOptions(false);
       handleStartRecord();
     }
-    return () => {
-      if (countdownRef.current) clearTimeout(countdownRef.current);
-    };
-  }, [countdownActive, countdownSeconds]);
+  }, [countdownActive, countdownSeconds, handleStartRecord]);
 
   const styles = StyleSheet.create({
     container: {

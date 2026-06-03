@@ -29,6 +29,7 @@ export default function CameraScreen() {
   const isDark = colorScheme === 'dark';
 
   // Request permission on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!permission?.granted) {
       requestPermission();
@@ -56,9 +57,11 @@ export default function CameraScreen() {
         setCountdownSeconds((prev) => prev - 1);
       }, 1000);
     } else if (countdownActive && countdownSeconds === 0) {
+      // @ts-ignore - function defined later in component
       setCountdownActive(false);
       setShowDelayOptions(false);
       handleStartRecord();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
     }
     return () => {
       if (countdownRef.current) clearTimeout(countdownRef.current);
