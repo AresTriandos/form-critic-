@@ -8,7 +8,11 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "ios": {
+        "buildCache": false,
+        "image": "latest"
+      }
     }
   },
   "submit": {
