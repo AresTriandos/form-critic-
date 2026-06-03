@@ -28,7 +28,72 @@ export default function CameraScreen() {
   const params = useLocalSearchParams<{ autoDetect?: string; exerciseName?: string }>();
   const isDark = colorScheme === 'dark';
 
-  // Request permission on mount
+
+  // Function declarations
+  const handleStartRecord = async () => {
+    try {
+      if (!cameraRef.current) {
+        Alert.alert('Error', 'Camera not initialized');
+        return;
+      }
+      recordingRef.current = true;
+      setIsRecording(true);
+      setRecordingTime(0);
+      const video = await cameraRef.current.recordAsync();
+      if (!video?.uri) throw new Error('Failed to record video');
+      recordingRef.current = false;
+      setIsRecording(false);
+      await saveVideoLocally(video.uri);
+    } catch (error: any) {
+      recordingRef.current = false;
+      setIsRecording(false);
+      Alert.alert('Recording Error', error?.message || 'Failed to record');
+    }
+  };
+
+  const handleStopRecord = async () => {
+    try {
+      if (cameraRef.current) {
+        recordingRef.current = false;
+        setIsRecording(false);
+        await cameraRef.current.stopRecording();
+      }
+    } catch (error: any) {
+      recordingRef.current = false;
+      setIsRecording(false);
+    }
+  };
+
+  const startDelayedRecord = (delaySeconds: number) => {
+    setCountdownSeconds(delaySeconds);
+    setCountdownActive(true);
+  };
+
+  const saveVideoLocally = async (videoPath: string) => {
+    try {
+      const appDir = FileSystemLegacy.documentDirectory + 'FormCritic/';
+      const dirInfo = await FileSystemLegacy.getInfoAsync(appDir);
+      if (!dirInfo.exists) {
+        await FileSystemLegacy.makeDirectoryAsync(appDir, { intermediates: true });
+      }
+      const timestamp = Date.now();
+      const newPath = appDir + `workout_${timestamp}.mp4`;
+      await FileSystemLegacy.copyAsync({ from: videoPath, to: newPath });
+      router.push({
+        pathname: '/gym/video-preview' as any,
+        params: {
+          autoDetect: params.autoDetect || 'true',
+          exerciseName: params.exerciseName || '',
+          videoPath: newPath,
+          timestamp: timestamp.toString(),
+        },
+      });
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to save video: ' + (error?.message || ''));
+    }
+  };
+
+    // Request permission on mount
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!permission?.granted) {
@@ -175,70 +240,7 @@ export default function CameraScreen() {
     secondaryButtonText: { color: isDark ? '#fff' : '#000', fontWeight: '600', fontSize: 16 },
   });
 
-  const handleStartRecord = async () => {
-    try {
-      if (!cameraRef.current) {
-        Alert.alert('Error', 'Camera not initialized');
-        return;
-      }
-      recordingRef.current = true;
-      setIsRecording(true);
-      setRecordingTime(0);
-      const video = await cameraRef.current.recordAsync();
-      if (!video?.uri) throw new Error('Failed to record video');
-      recordingRef.current = false;
-      setIsRecording(false);
-      await saveVideoLocally(video.uri);
-    } catch (error: any) {
-      recordingRef.current = false;
-      setIsRecording(false);
-      Alert.alert('Recording Error', error?.message || 'Failed to record');
-    }
-  };
-
-  const handleStopRecord = async () => {
-    try {
-      if (cameraRef.current) {
-        recordingRef.current = false;
-        setIsRecording(false);
-        await cameraRef.current.stopRecording();
-      }
-    } catch (error: any) {
-      recordingRef.current = false;
-      setIsRecording(false);
-    }
-  };
-
-  const startDelayedRecord = (delaySeconds: number) => {
-    setCountdownSeconds(delaySeconds);
-    setCountdownActive(true);
-  };
-
-  const saveVideoLocally = async (videoPath: string) => {
-    try {
-      const appDir = FileSystemLegacy.documentDirectory + 'FormCritic/';
-      const dirInfo = await FileSystemLegacy.getInfoAsync(appDir);
-      if (!dirInfo.exists) {
-        await FileSystemLegacy.makeDirectoryAsync(appDir, { intermediates: true });
-      }
-      const timestamp = Date.now();
-      const newPath = appDir + `workout_${timestamp}.mp4`;
-      await FileSystemLegacy.copyAsync({ from: videoPath, to: newPath });
-      router.push({
-        pathname: '/gym/video-preview' as any,
-        params: {
-          autoDetect: params.autoDetect || 'true',
-          exerciseName: params.exerciseName || '',
-          videoPath: newPath,
-          timestamp: timestamp.toString(),
-        },
-      });
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to save video: ' + (error?.message || ''));
-    }
-  };
-
-  if (!permission?.granted) {
+    if (!permission?.granted) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.permissionContainer}>
