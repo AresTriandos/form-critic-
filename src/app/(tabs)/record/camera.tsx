@@ -71,14 +71,45 @@ export default function CameraScreen() {
 
   const saveVideoLocally = async (videoPath: string) => {
     try {
-      const appDir = FileSystemLegacy.documentDirectory + 'FormCritic/';
+      console.log('[Camera] ===== SAVE VIDEO START =====');
+      console.log('[Camera] Original video path:', videoPath);
+      
+      const docDir = FileSystemLegacy.documentDirectory;
+      console.log('[Camera] Document directory:', docDir);
+      
+      if (!docDir) {
+        throw new Error('Document directory is not available');
+      }
+      
+      const appDir = docDir + 'FormCritic/';
+      console.log('[Camera] App directory:', appDir);
+      
       const dirInfo = await FileSystemLegacy.getInfoAsync(appDir);
+      console.log('[Camera] Directory info:', dirInfo);
+      
       if (!dirInfo.exists) {
+        console.log('[Camera] Creating directory...');
         await FileSystemLegacy.makeDirectoryAsync(appDir, { intermediates: true });
       }
+      
       const timestamp = Date.now();
       const newPath = appDir + `workout_${timestamp}.mp4`;
+      console.log('[Camera] New path:', newPath);
+      
+      console.log('[Camera] Copying video from', videoPath, 'to', newPath);
       await FileSystemLegacy.copyAsync({ from: videoPath, to: newPath });
+      console.log('[Camera] Copy complete');
+      
+      // Verify file exists
+      const fileInfo = await FileSystemLegacy.getInfoAsync(newPath);
+      console.log('[Camera] File saved - exists:', fileInfo.exists, 'size:', fileInfo.size);
+      
+      if (!fileInfo.exists) {
+        throw new Error('File was not saved successfully');
+      }
+      
+      console.log('[Camera] ===== SAVE SUCCESS, navigating to preview =====');
+      
       router.push({
         pathname: '/gym/video-preview' as any,
         params: {
@@ -89,6 +120,8 @@ export default function CameraScreen() {
         },
       });
     } catch (error: any) {
+      console.error('[Camera] ===== SAVE ERROR =====');
+      console.error('[Camera] Error:', error);
       Alert.alert('Error', 'Failed to save video: ' + (error?.message || ''));
     }
   };
