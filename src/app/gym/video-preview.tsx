@@ -205,7 +205,7 @@ export default function VideoPreview() {
         params: {
           videoPath,
           exerciseName: autoDetect ? undefined : paramExerciseName,
-          analysisResult: JSON.stringify(result),
+          analysis: JSON.stringify(result),  // FIXED: was 'analysisResult'
         },
       });
     } catch (error: any) {
