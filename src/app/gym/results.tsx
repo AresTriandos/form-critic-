@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   useColorScheme,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -179,27 +180,47 @@ export default function ResultsScreen() {
 
   const handleSave = async () => {
     try {
+      console.log('[Results] ===== SAVE RESULT START =====');
+      console.log('[Results] Analysis:', analysis);
+      
       // Get existing history from SecureStore
       const existingHistory = await SecureStore.getItemAsync('workout_history');
+      console.log('[Results] Existing history:', existingHistory);
+      
       const history = existingHistory ? JSON.parse(existingHistory) : [];
+      console.log('[Results] Parsed history:', history);
 
-      // Add new result with video URI
-      history.push({
+      // Prepare new result
+      const newResult = {
         id: Date.now().toString(),
-        ...analysis,
-        videoUri: videoUri || analysis.videoUri, // Include video path
+        exercise: analysis.exercise || 'Unknown',
+        score: analysis.score || 0,
+        critique: analysis.critique || 'No analysis available',
+        keyCues: Array.isArray(analysis.keyCues) ? analysis.keyCues : [],
+        timestamp: analysis.timestamp || new Date().toISOString(),
+        videoUri: videoUri || analysis.videoUri,
         savedAt: new Date().toISOString(),
-      });
+      };
+      console.log('[Results] New result:', newResult);
+      
+      history.push(newResult);
+      console.log('[Results] Updated history:', history);
 
       // Save back to SecureStore
-      await SecureStore.setItemAsync('workout_history', JSON.stringify(history));
-
+      const jsonStr = JSON.stringify(history);
+      console.log('[Results] Saving JSON:', jsonStr.length, 'chars');
+      await SecureStore.setItemAsync('workout_history', jsonStr);
+      
+      console.log('[Results] ===== SAVE SUCCESS =====');
       setSavedMessage(true);
       setTimeout(() => {
         router.push('/(tabs)');
       }, 1500);
-    } catch (err) {
-      console.error('Save error:', err);
+    } catch (err: any) {
+      console.error('[Results] ===== SAVE ERROR =====');
+      console.error('[Results] Error:', err);
+      console.error('[Results] Message:', err?.message);
+      Alert.alert('Save Error', `${err?.message || err}`);
     }
   };
 

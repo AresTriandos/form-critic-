@@ -351,7 +351,7 @@ export default function CameraScreen() {
             </TouchableOpacity>
             <View style={{ width: 80 }} />
           </View>
-          {recordingRef.current && (
+          {isRecording && (
             <View style={styles.timerContainer}>
               <Text style={styles.timer}>
                 {String(Math.floor((recordingTime / 1000) / 60)).padStart(2, '0')}:

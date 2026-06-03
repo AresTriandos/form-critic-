@@ -171,17 +171,22 @@ export default function HistoryScreen() {
   const loadHistory = async () => {
     try {
       setLoading(true);
+      console.log('[History] Loading workout history...');
       const history = await SecureStore.getItemAsync('workout_history');
+      console.log('[History] Raw history data:', history);
       if (history) {
         const parsed = JSON.parse(history);
+        console.log('[History] Parsed:', parsed);
         const sorted = parsed.sort(
           (a: WorkoutResult, b: WorkoutResult) =>
             new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
         );
+        console.log('[History] Sorted results:', sorted);
         setResults(sorted);
       }
     } catch (err) {
-      console.error('Load history error:', err);
+      console.error('[History] Load history error:', err);
+      Alert.alert('Error Loading History', `${err}`);
     } finally {
       setLoading(false);
     }
@@ -296,8 +301,8 @@ export default function HistoryScreen() {
               <Text style={styles.analysisSectionTitle}>
                 {selectedWorkout?.exercise}
               </Text>
-              <Text style={{ fontSize: 28, fontWeight: '700', color: getScoreColor(selectedWorkout?.score || 0).text, marginBottom: 16 }}>
-                Score: {selectedWorkout?.score}/100
+              <Text style={{ fontSize: 28, fontWeight: '700', color: selectedWorkout ? getScoreColor(selectedWorkout.score || 0).text : '#000', marginBottom: 16 }}>
+                Score: {selectedWorkout?.score || 0}/100
               </Text>
             </View>
 
