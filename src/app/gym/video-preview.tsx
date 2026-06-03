@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, SafeAreaView, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Ionicons } from '@expo/vector-icons';
@@ -190,12 +190,19 @@ export default function VideoPreview() {
       </View>
       
       <View style={styles.content}>
-        {/* Video Ready Indicator */}
+        {/* Video Thumbnail */}
         <View style={styles.videoContainer}>
-          <View style={[styles.playOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.6)' }]}>
-            <Ionicons name="checkmark-circle" size={80} color="#4ade80" />
-            <Text style={[styles.infoValue, { marginTop: 16, color: '#fff', textAlign: 'center' }]}>Video Ready</Text>
-            <Text style={[styles.infoLabel, { color: '#aaa', textAlign: 'center', marginTop: 8 }]}>Ready for analysis</Text>
+          <Image 
+            source={{ uri: `file://${videoPath}` }} 
+            style={styles.video}
+            resizeMode="cover"
+            onError={(e) => console.log('[VideoPreview] Error loading thumbnail:', e)}
+          />
+          <View style={styles.playOverlay}>
+            <View style={styles.playButton}>
+              <Ionicons name="play" size={32} color="#000" />
+            </View>
+            <Text style={[styles.infoLabel, { color: '#fff', marginTop: 16 }]}>Tap to analyze</Text>
           </View>
         </View>
 
