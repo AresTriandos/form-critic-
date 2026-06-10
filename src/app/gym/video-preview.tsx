@@ -12,15 +12,25 @@ export default function VideoPreview() {
   
   const { 
     videoPath, 
+    videoPath1,
+    videoPath2,
+    dualMode,
     autoDetect: paramAutoDetect, 
     exerciseName: paramExerciseName,
     timestamp
   } = useLocalSearchParams<{ 
-    videoPath: string;
+    videoPath?: string;
+    videoPath1?: string;
+    videoPath2?: string;
+    dualMode?: string;
     autoDetect?: string;
     exerciseName?: string;
     timestamp?: string;
   }>();
+  
+  const isDualMode = dualMode === 'true';
+  const finalVideoPath = videoPath1 || videoPath;
+  const finalVideoPath2 = videoPath2;
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [thumbnailUri, setThumbnailUri] = useState<string | null>(null);
@@ -28,10 +38,10 @@ export default function VideoPreview() {
 
   useEffect(() => {
     const generateThumbnail = async () => {
-      if (!videoPath) return;
+      if (!finalVideoPath) return;
       try {
-        console.log('[VideoPreview] Generating thumbnail from:', videoPath);
-        const { uri } = await VideoThumbnails.getThumbnailAsync(videoPath, {
+        console.log('[VideoPreview] Generating thumbnail from:', finalVideoPath);
+        const { uri } = await VideoThumbnails.getThumbnailAsync(finalVideoPath, {
           time: 1000, // 1 second into video
         });
         console.log('[VideoPreview] Thumbnail generated:', uri);
@@ -46,7 +56,7 @@ export default function VideoPreview() {
     };
 
     generateThumbnail();
-  }, [videoPath]);
+  }, [finalVideoPath]);
 
   const styles = StyleSheet.create({
     container: {
@@ -172,7 +182,7 @@ export default function VideoPreview() {
     },
   });
 
-  if (!videoPath) {
+  if (!finalVideoPath || (isDualMode && !finalVideoPath2)) {
     return (
       <SafeAreaView style={[styles.container]}>
         <View style={styles.errorContainer}>
@@ -183,22 +193,25 @@ export default function VideoPreview() {
   }
 
   const handleSubmitAnalysis = async () => {
-    if (!videoPath) {
-      Alert.alert('Error', 'Video path not found');
+    if (!finalVideoPath || (isDualMode && !finalVideoPath2)) {
+      Alert.alert('Error', 'Video path(s) not found');
       return;
     }
 
     setIsAnalyzing(true);
     console.log('[VideoPreview] ===== ANALYSIS START =====');
-    console.log('[VideoPreview] Video path:', videoPath);
+    console.log('[VideoPreview] Video path 1:', finalVideoPath);
+    if (isDualMode) console.log('[VideoPreview] Video path 2:', finalVideoPath2);
     try {
       const autoDetect = paramAutoDetect === 'false' ? false : true;
       console.log('[VideoPreview] Exercise:', autoDetect ? 'auto-detect' : paramExerciseName);
+      console.log('[VideoPreview] Dual mode:', isDualMode);
       console.log('[VideoPreview] Calling analyzeForm...');
       
       const result = await analyzeForm(
-        videoPath, 
-        autoDetect ? undefined : paramExerciseName
+        finalVideoPath,
+        autoDetect ? undefined : paramExerciseName,
+        isDualMode ? finalVideoPath2 : undefined
       );
       
       console.log('[VideoPreview] Analysis result:', result);
@@ -206,9 +219,11 @@ export default function VideoPreview() {
       router.push({
         pathname: '/gym/results' as any,
         params: {
-          videoPath,
+          videoPath: finalVideoPath,
+          videoPath2: isDualMode ? finalVideoPath2 : undefined,
           exerciseName: autoDetect ? undefined : paramExerciseName,
-          analysis: JSON.stringify(result),  // FIXED: was 'analysisResult'
+          analysis: JSON.stringify(result),
+          dualMode: isDualMode ? 'true' : 'false',
         },
       });
     } catch (error: any) {
@@ -247,35 +262,84 @@ export default function VideoPreview() {
       </View>
       
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Video Thumbnail */}
-        <View style={styles.videoContainer}>
-          {thumbnailLoading ? (
-            <View style={[styles.video, { justifyContent: 'center', alignItems: 'center' }]}>
-              <ActivityIndicator size="large" color="#0a7ea4" />
+        {/* Video Thumbnails */}
+        {isDualMode ? (
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+            {/* Angle 1 */}
+            <View style={[styles.videoContainer, { flex: 1, aspectRatio: 4 / 5 }]}>
+              {thumbnailLoading ? (
+                <View style={[styles.video, { justifyContent: 'center', alignItems: 'center' }]}>
+                  <ActivityIndicator size="large" color="#0a7ea4" />
+                </View>
+              ) : thumbnailUri ? (
+                <Image 
+                  source={{ uri: thumbnailUri }} 
+                  style={styles.video}
+                  resizeMode="cover"
+                  onError={(e) => console.log('[VideoPreview] Image load error:', e)}
+                />
+              ) : (
+                <View style={[styles.video, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a1a' }]}>
+                  <Ionicons name="videocam" size={40} color="#666" />
+                </View>
+              )}
+              <View style={styles.playOverlay}>
+                <View style={[styles.playButton, { width: 50, height: 50, borderRadius: 25 }]}>
+                  <Ionicons name="play" size={24} color="#000" />
+                </View>
+              </View>
+              <Text style={[styles.infoLabel, { color: '#fff', marginTop: 8, textAlign: 'center' }]}>Angle 1</Text>
             </View>
-          ) : thumbnailUri ? (
-            <Image 
-              source={{ uri: thumbnailUri }} 
-              style={styles.video}
-              resizeMode="cover"
-              onError={(e) => console.log('[VideoPreview] Image load error:', e)}
-            />
-          ) : (
-            <View style={[styles.video, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a1a' }]}>
-              <Ionicons name="videocam" size={60} color="#666" />
-              <Text style={[styles.infoLabel, { color: '#aaa', marginTop: 12 }]}>Video Ready</Text>
+            
+            {/* Angle 2 */}
+            <View style={[styles.videoContainer, { flex: 1, aspectRatio: 4 / 5 }]}>
+              <View style={[styles.video, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a1a' }]}>
+                <Ionicons name="videocam" size={40} color="#666" />
+              </View>
+              <View style={styles.playOverlay}>
+                <View style={[styles.playButton, { width: 50, height: 50, borderRadius: 25 }]}>
+                  <Ionicons name="play" size={24} color="#000" />
+                </View>
+              </View>
+              <Text style={[styles.infoLabel, { color: '#fff', marginTop: 8, textAlign: 'center' }]}>Angle 2</Text>
             </View>
-          )}
-          <View style={styles.playOverlay}>
-            <View style={styles.playButton}>
-              <Ionicons name="play" size={32} color="#000" />
-            </View>
-            <Text style={[styles.infoLabel, { color: '#fff', marginTop: 16 }]}>Ready to analyze</Text>
           </View>
-        </View>
+        ) : (
+          <View style={styles.videoContainer}>
+            {thumbnailLoading ? (
+              <View style={[styles.video, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#0a7ea4" />
+              </View>
+            ) : thumbnailUri ? (
+              <Image 
+                source={{ uri: thumbnailUri }} 
+                style={styles.video}
+                resizeMode="cover"
+                onError={(e) => console.log('[VideoPreview] Image load error:', e)}
+              />
+            ) : (
+              <View style={[styles.video, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a1a' }]}>
+                <Ionicons name="videocam" size={60} color="#666" />
+                <Text style={[styles.infoLabel, { color: '#aaa', marginTop: 12 }]}>Video Ready</Text>
+              </View>
+            )}
+            <View style={styles.playOverlay}>
+              <View style={styles.playButton}>
+                <Ionicons name="play" size={32} color="#000" />
+              </View>
+              <Text style={[styles.infoLabel, { color: '#fff', marginTop: 16 }]}>Ready to analyze</Text>
+            </View>
+          </View>
+        )}
 
         {/* Exercise Info */}
         <View style={styles.infoSection}>
+          {isDualMode && (
+            <>
+              <Text style={styles.infoLabel}>Recording Mode</Text>
+              <Text style={styles.infoValue}>Dual Angle</Text>
+            </>
+          )}
           {paramExerciseName ? (
             <>
               <Text style={styles.infoLabel}>Exercise</Text>

@@ -15,6 +15,9 @@ export default function CameraScreen() {
   const [countdownActive, setCountdownActive] = useState(false);
   const [countdownSeconds, setCountdownSeconds] = useState(0);
   const [showDelayOptions, setShowDelayOptions] = useState(false);
+  const [dualRecordingMode, setDualRecordingMode] = useState(false);
+  const [recordingAngle, setRecordingAngle] = useState<1 | 2>(1);
+  const [video1Path, setVideo1Path] = useState<string | null>(null);
   
   // Refs
   const cameraRef = useRef<CameraView>(null);
@@ -43,7 +46,8 @@ export default function CameraScreen() {
       if (!video?.uri) throw new Error('Failed to record video');
       recordingRef.current = false;
       setIsRecording(false);
-      await saveVideoLocally(video.uri);
+      const angleToUse = dualRecordingMode ? recordingAngle : undefined;
+      await saveVideoLocally(video.uri, angleToUse);
     } catch (error: any) {
       recordingRef.current = false;
       setIsRecording(false);
@@ -69,7 +73,7 @@ export default function CameraScreen() {
     setCountdownActive(true);
   };
 
-  const saveVideoLocally = async (videoPath: string) => {
+  const saveVideoLocally = async (videoPath: string, angleNum?: 1 | 2) => {
     try {
       console.log('[Camera] ===== SAVE VIDEO START =====');
       console.log('[Camera] Original video path:', videoPath);
@@ -93,8 +97,10 @@ export default function CameraScreen() {
       }
       
       const timestamp = Date.now();
-      const newPath = appDir + `workout_${timestamp}.mp4`;
+      const angleStr = angleNum && dualRecordingMode ? `_angle${angleNum}` : '';
+      const newPath = appDir + `workout_${timestamp}${angleStr}.mp4`;
       console.log('[Camera] New path:', newPath);
+      console.log('[Camera] Dual mode:', dualRecordingMode, 'Angle:', angleNum);
       
       console.log('[Camera] Copying video from', videoPath, 'to', newPath);
       await FileSystemLegacy.copyAsync({ from: videoPath, to: newPath });
@@ -108,17 +114,45 @@ export default function CameraScreen() {
         throw new Error('File was not saved successfully');
       }
       
-      console.log('[Camera] ===== SAVE SUCCESS, navigating to preview =====');
+      console.log('[Camera] ===== SAVE SUCCESS =====');
       
-      router.push({
-        pathname: '/gym/video-preview' as any,
-        params: {
-          autoDetect: params.autoDetect || 'true',
-          exerciseName: params.exerciseName || '',
-          videoPath: newPath,
-          timestamp: timestamp.toString(),
-        },
-      });
+      // Handle dual-recording mode
+      if (dualRecordingMode && angleNum === 1) {
+        // Saved angle 1, now store it and show prompt for angle 2
+        console.log('[Camera] Angle 1 saved, prompting for angle 2...');
+        setVideo1Path(newPath);
+        setRecordingAngle(2);
+        setShowDelayOptions(false); // Reset delay options for angle 2
+        Alert.alert('Angle 1 Recorded', 'Now record angle 2 (side view or alternative angle)', [
+          { text: 'Record Angle 2', onPress: () => console.log('Ready for angle 2') },
+        ]);
+      } else if (dualRecordingMode && angleNum === 2 && video1Path) {
+        // Both videos recorded, navigate to preview with both
+        console.log('[Camera] Both angles saved, navigating to preview...');
+        router.push({
+          pathname: '/gym/video-preview' as any,
+          params: {
+            autoDetect: params.autoDetect || 'true',
+            exerciseName: params.exerciseName || '',
+            videoPath1: video1Path,
+            videoPath2: newPath,
+            timestamp: timestamp.toString(),
+            dualMode: 'true',
+          },
+        });
+      } else {
+        // Single recording mode
+        console.log('[Camera] Single angle, navigating to preview...');
+        router.push({
+          pathname: '/gym/video-preview' as any,
+          params: {
+            autoDetect: params.autoDetect || 'true',
+            exerciseName: params.exerciseName || '',
+            videoPath: newPath,
+            timestamp: timestamp.toString(),
+          },
+        });
+      }
     } catch (error: any) {
       console.error('[Camera] ===== SAVE ERROR =====');
       console.error('[Camera] Error:', error);
@@ -341,6 +375,14 @@ export default function CameraScreen() {
 
         {/* Controls */}
         <View style={styles.overlay}>
+          {/* Dual mode indicator */}
+          {dualRecordingMode && (
+            <View style={{ alignItems: 'center', marginBottom: 12 }}>
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', backgroundColor: 'rgba(0,0,0,0.4)', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 4 }}>
+                Angle {recordingAngle} of 2
+              </Text>
+            </View>
+          )}
           <View style={styles.controls}>
             <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()} disabled={false} activeOpacity={0.85}>
               <Ionicons name="chevron-back" size={24} color="#ffffff" />
@@ -349,7 +391,18 @@ export default function CameraScreen() {
             <TouchableOpacity style={styles.recordButton} onPress={recordingRef.current ? handleStopRecord : () => setShowDelayOptions(true)} disabled={countdownActive} activeOpacity={0.8}>
               {recordingRef.current ? <Ionicons name="stop" size={40} color="#ffffff" /> : <Ionicons name="radio-button-on" size={40} color="#ffffff" />}
             </TouchableOpacity>
-            <View style={{ width: 80 }} />
+            <TouchableOpacity 
+              style={[styles.cancelButton, { backgroundColor: dualRecordingMode ? '#0a7ea4' : 'rgba(255, 255, 255, 0.2)' }]} 
+              onPress={() => {
+                setDualRecordingMode(!dualRecordingMode);
+                setRecordingAngle(1);
+                setVideo1Path(null);
+              }}
+              disabled={isRecording || countdownActive}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="duplicate" size={24} color="#ffffff" />
+            </TouchableOpacity>
           </View>
           {isRecording && (
             <View style={styles.timerContainer}>

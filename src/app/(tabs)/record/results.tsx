@@ -23,11 +23,17 @@ interface AnalysisResult {
 }
 
 export default function ResultsScreen() {
-  const { analysis: analysisStr, videoUri } = useLocalSearchParams<{ analysis: string; videoUri: string }>();
+  const { analysis: analysisStr, videoUri, videoUri2, dualMode } = useLocalSearchParams<{ 
+    analysis: string; 
+    videoUri: string;
+    videoUri2?: string;
+    dualMode?: string;
+  }>();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const [savedMessage, setSavedMessage] = useState(false);
+  const isDualMode = dualMode === 'true';
 
   const analysis: AnalysisResult = analysisStr
     ? JSON.parse(analysisStr)
@@ -183,11 +189,13 @@ export default function ResultsScreen() {
       const existingHistory = await SecureStore.getItemAsync('workout_history');
       const history = existingHistory ? JSON.parse(existingHistory) : [];
 
-      // Add new result with video URI
+      // Add new result with video URI(s)
       history.push({
         id: Date.now().toString(),
         ...analysis,
-        videoUri: videoUri || analysis.videoUri, // Include video path
+        videoUri: videoUri || analysis.videoUri, // Include first video path
+        videoUri2: isDualMode ? videoUri2 : undefined, // Include second video if dual-mode
+        dualMode: isDualMode,
         savedAt: new Date().toISOString(),
       });
 
@@ -223,6 +231,9 @@ export default function ResultsScreen() {
 
         <View style={styles.exerciseCard}>
           <Text style={styles.exerciseName}>{analysis.exercise}</Text>
+          {isDualMode && (
+            <Text style={[styles.sectionTitle, { color: '#0a7ea4', fontSize: 14, marginBottom: 12 }]}>Dual Angle Analysis</Text>
+          )}
           <View style={styles.scoreContainer}>
             <Text style={styles.score}>{analysis.score}</Text>
             <Text style={styles.scoreMax}>/100</Text>

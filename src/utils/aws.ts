@@ -12,14 +12,16 @@ interface AnalysisResult {
 const LAMBDA_ENDPOINT = 'https://hevgy4dagmgawsrafitpkjahbq0ydunt.lambda-url.us-east-1.on.aws/';
 
 /**
- * Upload video to Lambda for analysis
- * Sends full video to Gemini 2.0 for native video analysis
- * @param videoUri - Path to video file
+ * Upload video(s) to Lambda for analysis
+ * Sends full video(s) to Gemini 2.0 for native video analysis
+ * @param videoUri - Path to video file (angle 1)
  * @param exerciseName - Optional exercise name (if provided, uses manual mode; if undefined, uses auto-detect)
+ * @param videoUri2 - Optional path to second video (angle 2) for dual-angle analysis
  */
-export async function uploadVideoAndAnalyze(videoUri: string, exerciseName?: string): Promise<AnalysisResult> {
+export async function uploadVideoAndAnalyze(videoUri: string, exerciseName?: string, videoUri2?: string): Promise<AnalysisResult> {
   try {
     console.log('[AWS] Starting video analysis:', videoUri);
+    if (videoUri2) console.log('[AWS] Secondary video:', videoUri2);
 
     // Verify file exists
     console.log('[AWS] Checking if video file exists...');
@@ -36,13 +38,35 @@ export async function uploadVideoAndAnalyze(videoUri: string, exerciseName?: str
       encoding: 'base64',
     });
 
-    console.log('[AWS] Video size:', base64Video.length, 'bytes');
+    console.log('[AWS] Video 1 size:', base64Video.length, 'bytes');
+    
+    // Read second video if provided
+    let base64Video2: string | undefined;
+    if (videoUri2) {
+      console.log('[AWS] Checking if second video file exists...');
+      const fileInfo2 = await FileSystem.getInfoAsync(videoUri2);
+      if (!fileInfo2.exists) {
+        throw new Error(`Second video file not found at: ${videoUri2}`);
+      }
+      console.log('[AWS] Reading second video file...');
+      base64Video2 = await FileSystem.readAsStringAsync(videoUri2, {
+        encoding: 'base64',
+      });
+      console.log('[AWS] Video 2 size:', base64Video2.length, 'bytes');
+    }
 
     // Prepare payload
     const payload: any = {
       video: base64Video,
       timestamp: new Date().toISOString(),
     };
+    
+    // Add second video if provided (dual-angle mode)
+    if (base64Video2) {
+      payload.video2 = base64Video2;
+      payload.dualMode = true;
+      console.log('[AWS] Using dual-angle mode');
+    }
     
     // Add exercise name if manual mode
     if (exerciseName) {

@@ -1,8 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 interface AnalysisPayload {
-  video: string; // base64 encoded MP4
+  video: string; // base64 encoded MP4 (angle 1)
+  video2?: string; // Optional: base64 encoded MP4 (angle 2) for dual-angle analysis
   timestamp: string;
+  dualMode?: boolean; // If true, analyzing two angles
   exerciseName?: string; // Optional: pre-identified exercise name
   exerciseInstructions?: string[]; // Optional: ExerciseDB instructions for context
   targetMuscle?: string; // Optional: target muscle group
@@ -21,10 +23,12 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
 /**
  * Analyze exercise form using Google Gemini 2.5 Vision API
  * Gemini natively supports video analysis (updated 2026-06-02)
+ * Optionally analyzes dual-angle videos for comprehensive form assessment
  * Optionally uses ExerciseDB context for improved analysis
  */
 async function analyzeVideo(
   videoBase64: string,
+  videoBase64_2?: string,
   exerciseName?: string,
   exerciseInstructions?: string[],
   targetMuscle?: string
@@ -34,14 +38,18 @@ async function analyzeVideo(
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     // Create the prompt with optional exercise context
-    let prompt = `You are an expert fitness coach analyzing exercise form from a video.
+    let prompt = `You are an expert fitness coach analyzing exercise form from video(s).
 
-Analyze the exercise shown in this video and provide:
+Analyze the exercise shown in ${videoBase64_2 ? 'these two videos (video1 = front/primary angle, video2 = side/alternative angle)' : 'this video'} and provide:
 
 1. Exercise Name: Identify the specific exercise being performed
 2. Form Score: Rate the form quality from 0-100 (100 = perfect form)
 3. Detailed Critique: Provide 2-3 sentences of specific feedback on what they're doing well and what needs improvement
 4. Key Cues: List 3-4 specific actionable improvements they should focus on`;
+    
+    if (videoBase64_2) {
+      prompt += `\n\nIMPORTANT: You are analyzing TWO angles:\n- Video 1: Front or primary angle\n- Video 2: Side or alternative angle\n\nCompare both angles to identify form issues visible from each perspective and provide comprehensive feedback.`;
+    }
 
     // Add exercise context if provided
     if (exerciseName) {
@@ -70,17 +78,30 @@ Analyze the exercise shown in this video and provide:
 
 Only return the JSON, no other text.`;
 
-    // Send to Gemini with video
-    console.log('Sending video to Gemini for analysis...');
-    const response = await model.generateContent([
+    // Send to Gemini with video(s)
+    console.log('Sending video(s) to Gemini for analysis...');
+    const contentArray: any[] = [
       {
         inlineData: {
           mimeType: 'video/mp4',
           data: videoBase64,
         },
       },
-      prompt,
-    ]);
+    ];
+    
+    // Add second video if provided
+    if (videoBase64_2) {
+      contentArray.push({
+        inlineData: {
+          mimeType: 'video/mp4',
+          data: videoBase64_2,
+        },
+      });
+    }
+    
+    contentArray.push(prompt);
+    
+    const response = await model.generateContent(contentArray);
 
     const result = await response.response;
     const textContent = result.text();
@@ -148,11 +169,14 @@ export async function handler(event: any): Promise<any> {
       };
     }
 
-    console.log('Video size:', payload.video.length, 'bytes');
+    console.log('Video 1 size:', payload.video.length, 'bytes');
+    if (payload.video2) console.log('Video 2 size:', payload.video2.length, 'bytes');
+    console.log('Dual mode:', payload.dualMode);
 
-    // Analyze video with optional exercise context
+    // Analyze video(s) with optional exercise context
     const analysis = await analyzeVideo(
       payload.video,
+      payload.video2,
       payload.exerciseName,
       payload.exerciseInstructions,
       payload.targetMuscle
