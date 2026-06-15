@@ -96,6 +96,17 @@ export async function uploadVideoAndAnalyze(videoUri: string, exerciseName?: str
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[AWS] Lambda error response:', response.status, errorText);
+      
+      // Try to parse structured error response
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.error) {
+          throw new Error(errorJson.error);
+        }
+      } catch (parseError) {
+        // If not JSON, use raw text
+      }
+      
       throw new Error(`Lambda returned status ${response.status}: ${errorText}`);
     }
 
